@@ -23,6 +23,7 @@ public class ErrorResponse
     public static ErrorResponse FileWithIdNotFound => new("NOT_FOUND", "ID", "File with id not found");
     public static ErrorResponse UploadStreamNotFound => new("NOT_FOUND", "STREAM", "Stream not found");
     public static ErrorResponse HashMismatch => new("HASH_MISMATCH", "HASH", "Hash doesn't match");
+    public static ErrorResponse FileIsNotVideo => new("NOT_FOUND", "VIDEO", "File is not a video");
 
     // Server errors
     public static ErrorResponse InternalServerError => new("INTERNAL_SERVER_ERROR", "GENERIC", "Internal server error");
