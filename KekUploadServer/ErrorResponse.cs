@@ -26,6 +26,8 @@ public class ErrorResponse
 
     // Server errors
     public static ErrorResponse InternalServerError => new("INTERNAL_SERVER_ERROR", "GENERIC", "Internal server error");
+    public static ErrorResponse VideoSiteNotFound => new("INTERNAL_SERVER_ERROR", "VIDEO_PAGE", "Video page missing");
+    public static ErrorResponse LegalSiteNotFound => new("INTERNAL_SERVER_ERROR", "LEGAL_PAGE", "Legal page missing");
 
     public string ToJson()
     {

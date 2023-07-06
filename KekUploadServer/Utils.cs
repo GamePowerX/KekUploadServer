@@ -1,6 +1,6 @@
 namespace KekUploadServer;
 
-public class Utils
+public static class Utils
 {
     public static string RandomString(int i)
     {
@@ -8,5 +8,11 @@ public class Utils
         var random = new Random();
         return new string(Enumerable.Repeat(chars, i)
             .Select(s => s[random.Next(s.Length)]).ToArray());
+    }
+
+    public static async Task<string?> GetMimeType(string extension)
+    {
+        var mimeTypeEnumerable = await Task.Run(() => MimeTypeMap.List.MimeTypeMap.GetMimeType(extension));
+        return mimeTypeEnumerable.FirstOrDefault();
     }
 }

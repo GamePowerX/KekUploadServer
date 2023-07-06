@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>%name%</title>
+    <link href='https://vjs.zencdn.net/7.19.2/video-js.css' rel=\"stylesheet\"/>
+    <meta charset='UTF-8'>
+    <meta content='website' property='og:type'>
+    <meta content='summary_large_image' property='twitter:card'>
+    <meta content='%name%.%extension%' name='title'>
+    <meta content='%name%.%extension%' property='og:title'>
+    <meta content='%videoEmbedColor%' name='theme-color'>
+    <meta content='%description%' name='description'>
+    <meta content='%description%' property='og:description'>
+    <meta content='%thumbnail%' property='og:image'>
+    <meta content='%thumbnail%' property='twitter:image'>
+</head>
+<body>
+<video class='video-js'
+       controls
+       data-setup='{}'
+       id='%name%'
+       poster='%thumbnail%'
+       preload='auto'>
+    <source src='/d/%id%' type='video/%extension%'/>
+    <p class='vjs-no-js'>
+        To view this video please enable JavaScript, and consider upgrading to a
+        web browser that <a href='https://videojs.com/html5-video-support/' target='_blank'>supports HTML5 video</a>
+    </p>
+</video>
+<!--script src=https://vjs.zencdn.net/7.19.2/video.min.js></script-->
+<br>
+<a href='%downloadUrl%'>Download this video!</a>
+<p>For legal notices visit <a href='%rootUrl%legal'>this</a> site</p>
+<br>
+<h3 id="vidInfo"></h3>
+<p id="metadata"></p>
+</body>
+<script>
+    function httpGet(url) {
+        let xmlHttpRequest = new XMLHttpRequest();
+        xmlHttpRequest.open("GET", url, false);
+        xmlHttpRequest.send(null);
+        return xmlHttpRequest.responseText;
+    }
+
+    const metadata = JSON.parse(httpGet("/m/%id%"));
+    document.getElementById("vidInfo").innerHTML = "Video Information";
+    document.getElementById("metadata").innerHTML = metadata;
+</script>
+<style>
+    body {
+        font-family: sans-serif;
+        font-size: 1.2em;
+        background-color: black;
+        color: white;
+    }
+
+    h1 {
+        font-size: 2em;
+    }
+
+    a {
+        color: #007fff;
+    }
+</style>
+</html>

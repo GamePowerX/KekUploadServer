@@ -84,6 +84,7 @@ public class UploadService : IUploadService
             await Task.Run(() => _memoryCache.Remove(uploadItem.UploadStreamId));
             return existingItem.Id;
         }
+
         var newFilePath = Path.Combine(_uploadDirectory, uploadItem.UploadStreamId + ".upload");
         File.Move(filePath, newFilePath);
         _uploadDataContext.UploadItems.Add(uploadItem);
@@ -128,7 +129,6 @@ public class UploadService : IUploadService
 
     public async Task<string?> GetMimeType(string extension)
     {
-        var mimeTypeEnumerable = await Task.Run((() => MimeTypeMap.List.MimeTypeMap.GetMimeType(extension)));
-        return mimeTypeEnumerable.FirstOrDefault();
+        return await Utils.GetMimeType(extension);
     }
 }
