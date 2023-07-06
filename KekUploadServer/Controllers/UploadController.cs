@@ -104,15 +104,18 @@ public class UploadController : ControllerBase
             success = true
         });
     }
-    
+
     [HttpGet]
     [Route("d/{uploadId}")]
     public async Task<IActionResult> DownloadFile(string uploadId)
     {
-        var (uploadItem, path ) = await _uploadService.GetUploadedItem(uploadId);
+        var (uploadItem, path) = await _uploadService.GetUploadedItem(uploadId);
         if (uploadItem == null)
             return NotFound(ErrorResponse.FileWithIdNotFound);
         var mimeType = await _uploadService.GetMimeType(uploadItem.Extension);
-        return PhysicalFile(path, mimeType ?? "application/octet-stream", uploadItem.Name != null ? uploadItem.Name + '.' + uploadItem.Extension : uploadItem.Hash + '.' + uploadItem.Extension);
+        return PhysicalFile(path, mimeType ?? "application/octet-stream",
+            uploadItem.Name != null
+                ? uploadItem.Name + '.' + uploadItem.Extension
+                : uploadItem.Hash + '.' + uploadItem.Extension);
     }
 }
