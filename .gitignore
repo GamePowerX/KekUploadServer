@@ -8,3 +8,6 @@ riderModule.iml
 *.suo
 .vs/
 .vscode/
+appsettings.json
+appsettings.Development.json
+uploads

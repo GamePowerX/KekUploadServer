@@ -1,3 +1,6 @@
+using System.ComponentModel.DataAnnotations.Schema;
+using SharpHash.Interfaces;
+
 namespace KekUploadServer.Models;
 
 public class UploadItem
@@ -7,4 +10,7 @@ public class UploadItem
     public string Extension { get; set; } = string.Empty;
     public string? Name { get; set; }
     public string Hash { get; set; } = string.Empty;
+
+    [NotMapped] public FileStream FileStream { get; set; } = null!;
+    [NotMapped] public IHash Hasher { get; set; } = null!;
 }

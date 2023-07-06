@@ -1,39 +1,51 @@
 using KekUploadServer.Database;
+using KekUploadServer.Middlewares;
+using KekUploadServer.Services;
 using Microsoft.EntityFrameworkCore;
 
-var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
-builder.Services.AddDbContext<UploadDataContext>(options =>
+internal class Program
 {
-    options.UseNpgsql(builder.Configuration.GetConnectionString("KekUploadDb"));
-});
+    private static void Main(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+        // Add services to the container.
+        builder.Services.AddDbContext<UploadDataContext>(options =>
+        {
+            options.UseNpgsql(builder.Configuration.GetConnectionString("KekUploadDb"));
+        });
 
-var app = builder.Build();
+        builder.Services.AddControllers();
+        builder.Services.AddScoped<IUploadService, UploadService>();
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddMemoryCache();
+        // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+        builder.Services.AddEndpointsApiExplorer();
+        builder.Services.AddSwaggerGen();
 
-// Test database connection
-using var scope = app.Services.CreateScope();
-var services = scope.ServiceProvider;
-var context = services.GetRequiredService<UploadDataContext>();
-// Check if migrations are needed
-context.Database.Migrate();
+        var app = builder.Build();
+        app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
+        // Test database connection
+        using var scope = app.Services.CreateScope();
+        var services = scope.ServiceProvider;
+        var context = services.GetRequiredService<UploadDataContext>();
+        // Check if migrations are needed
+        context.Database.Migrate();
+
+        // Configure the HTTP request pipeline.
+        if (app.Environment.IsDevelopment())
+        {
+            app.UseSwagger();
+            app.UseSwaggerUI();
+        }
+
+        app.UseHttpsRedirection();
+
+        app.UseAuthorization();
+
+        app.MapControllers();
+
+        app.Run();
+    }
 }
-
-app.UseHttpsRedirection();
-
-app.UseAuthorization();
-
-app.MapControllers();
-
-app.Run();
