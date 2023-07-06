@@ -113,6 +113,6 @@ public class UploadController : ControllerBase
         if (uploadItem == null)
             return NotFound(ErrorResponse.FileWithIdNotFound);
         var mimeType = await _uploadService.GetMimeType(uploadItem.Extension);
-        return PhysicalFile(path, mimeType ?? "application/octet-stream", uploadItem.Name ?? uploadItem.Hash + uploadItem.Extension);
+        return PhysicalFile(path, mimeType ?? "application/octet-stream", uploadItem.Name != null ? uploadItem.Name + '.' + uploadItem.Extension : uploadItem.Hash + '.' + uploadItem.Extension);
     }
 }
