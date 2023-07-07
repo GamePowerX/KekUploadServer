@@ -18,6 +18,7 @@ internal class Program
         builder.Services.AddControllers();
         builder.Services.AddScoped<IUploadService, UploadService>();
         builder.Services.AddScoped<IWebService, WebService>();
+        builder.Services.AddScoped<IMediaService, MediaService>();
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddMemoryCache();
         // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

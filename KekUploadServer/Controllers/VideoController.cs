@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace KekUploadServer.Controllers;
 
+[ApiController]
 public class VideoController : ControllerBase
 {
     private readonly IConfiguration _configuration;
@@ -24,11 +25,35 @@ public class VideoController : ControllerBase
     [Route("t/{uploadId}")]
     public async Task<IActionResult> GetThumbnail(string uploadId)
     {
-        if (!_uploadService.DoesUploadStreamExist(uploadId))
-            return NotFound(ErrorResponse.FileWithIdNotFound);
-        var thumbnail = await _mediaService.GetThumbnail(uploadId);
+        var uploadItem = await _uploadService.GetUploadedItem(uploadId);
+        if (uploadItem.Item1 == null)
+            return NotFound(ErrorResponse.UploadStreamNotFound);
+        var thumbnail = await _mediaService.GetThumbnail(uploadItem);
         if (thumbnail == null)
             return NotFound(ErrorResponse.FileIsNotVideo);
         return File(thumbnail, "image/jpeg", "thumbnail.jpg");
+    }
+    
+    [HttpGet]
+    [Route("m/{uploadId}")]
+    public async Task<IActionResult> GetMetadata(string uploadId)
+    {
+        var uploadItem = await _uploadService.GetUploadedItem(uploadId);
+        if (uploadItem.Item1 == null)
+            return NotFound(ErrorResponse.UploadStreamNotFound);
+        var metadata = await _mediaService.GetMetadata(uploadItem);
+        if (metadata == null)
+            return NotFound(ErrorResponse.FileIsNotVideo);
+        if(metadata.Format == null) return NotFound(ErrorResponse.FileIsNotVideo);
+        metadata.Format.Filename = uploadItem.Item1.Name + "." + uploadItem.Item1.Extension;
+        return new JsonResult(new
+        {
+            metadata.Format,
+            metadata.Streams
+        })
+        {
+            ContentType = "application/json",
+            StatusCode = 200
+        };
     }
 }

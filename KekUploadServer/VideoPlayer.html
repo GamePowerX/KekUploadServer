@@ -43,7 +43,7 @@
         return xmlHttpRequest.responseText;
     }
 
-    const metadata = JSON.parse(httpGet("/m/%id%"));
+    const metadata = httpGet("/m/%id%");
     document.getElementById("vidInfo").innerHTML = "Video Information";
     document.getElementById("metadata").innerHTML = metadata;
 </script>
