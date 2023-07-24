@@ -58,7 +58,7 @@ public class WebService : IWebService
         if (!File.Exists("VideoPlayer.html")) return "VideoPlayer.html not found";
         var html = await File.ReadAllTextAsync("VideoPlayer.html");
         html = html.Replace("%id%", uploadItem.Id);
-        html = html.Replace("%name%", uploadItem.Name);
+        html = html.Replace("%name%", uploadItem.Name ?? uploadItem.Hash);
         html = html.Replace("%description%", _description);
         html = html.Replace("%extension%", uploadItem.Extension);
         html = html.Replace("%downloadUrl%", _baseUrl + "/d/" + uploadItem.Id);

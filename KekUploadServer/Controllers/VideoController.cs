@@ -45,7 +45,7 @@ public class VideoController : ControllerBase
         if (metadata == null)
             return NotFound(ErrorResponse.FileIsNotVideo);
         if(metadata.Format == null) return NotFound(ErrorResponse.FileIsNotVideo);
-        metadata.Format.Filename = uploadItem.Item1.Name + "." + uploadItem.Item1.Extension;
+        metadata.Format.Filename = (uploadItem.Item1.Name ?? uploadItem.Item1.Hash) + "." + uploadItem.Item1.Extension;
         return new JsonResult(new
         {
             metadata.Format,
