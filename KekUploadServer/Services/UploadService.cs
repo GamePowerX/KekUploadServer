@@ -1,5 +1,6 @@
 using KekUploadServer.Database;
 using KekUploadServer.Models;
+using KekUploadServer.Plugins;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using SharpHash.Base;
@@ -44,6 +45,7 @@ public class UploadService : IUploadService
         };
         uploadItem.Hasher.Initialize();
         await Task.Run(() => _memoryCache.Set(streamId, uploadItem, TimeSpan.FromMinutes(5)));
+        PluginLoader.PluginApi.OnUploadStreamCreated(uploadItem);
         return streamId;
     }
 
@@ -90,6 +92,7 @@ public class UploadService : IUploadService
         _uploadDataContext.UploadItems.Add(uploadItem);
         await _uploadDataContext.SaveChangesAsync();
         await Task.Run(() => _memoryCache.Remove(uploadItem.UploadStreamId));
+        PluginLoader.PluginApi.OnUploadStreamFinalized(uploadItem);
         return uploadItem.Id;
     }
 
@@ -101,6 +104,7 @@ public class UploadService : IUploadService
         await requestBody.CopyToAsync(tempStream);
         // reset the position of the temporary stream
         tempStream.Position = 0;
+        PluginLoader.PluginApi.OnChunkUploaded(uploadItem, tempStream);
         // copy the temporary stream in a byte array
         var tempBytes = tempStream.ToArray();
         if (hash != null)
@@ -130,5 +134,10 @@ public class UploadService : IUploadService
     public async Task<string?> GetMimeType(string extension)
     {
         return await Utils.GetMimeType(extension);
+    }
+
+    public async Task<IReadOnlyList<UploadItem>> GetUploads()
+    {
+        return await _uploadDataContext.UploadItems.ToListAsync();
     }
 }

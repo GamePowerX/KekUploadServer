@@ -14,4 +14,5 @@ public interface IUploadService
     Task<bool> UploadChunk(UploadItem uploadItem, Stream requestBody, string? hash = null);
     Task<(UploadItem?, string)> GetUploadedItem(string uploadId);
     Task<string?> GetMimeType(string extension);
+    Task<IReadOnlyList<UploadItem>> GetUploads();
 }

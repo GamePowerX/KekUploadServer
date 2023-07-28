@@ -1,9 +1,10 @@
 using System.ComponentModel.DataAnnotations.Schema;
+using KekUploadServerApi.Uploads;
 using SharpHash.Interfaces;
 
 namespace KekUploadServer.Models;
 
-public class UploadItem
+public class UploadItem : IUploadItem, IUploadedItem
 {
     public string Id { get; set; } = string.Empty;
     public string UploadStreamId { get; set; } = string.Empty;
