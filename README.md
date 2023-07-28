@@ -14,4 +14,4 @@ So yeah, this is another reimplementation of the KekUploadServer in C#.
 [Api Documentation](https://gamepowerx.com/kekupload-server/docs/api/)
 
 ## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
+This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) file for details
