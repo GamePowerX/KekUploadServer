@@ -1,4 +1,5 @@
 using System.Text;
+using KekUploadServer.Extensions;
 using KekUploadServer.Models;
 using KekUploadServer.Services;
 using KekUploadServerApi;
@@ -32,11 +33,6 @@ public class PluginApi : IKekUploadServer
     {
         await plugin.Unload();
         Plugins[plugin] = PluginState.Unloaded;
-    }
-
-    public async Task ReloadPlugin(IPlugin plugin)
-    {
-        await plugin.Reload();
     }
 
     public IReadOnlyList<string> GetPluginNames()
@@ -111,6 +107,12 @@ public class PluginApi : IKekUploadServer
         throw new ArgumentException("T is not in the same assembly as plugin!");
     }
 
+    public void RegisterLoggerProvider(IPlugin plugin, ILoggerProvider loggerProvider)
+    {
+        var loggerFactory = App.Services.GetRequiredService<ILoggerFactory>();
+        loggerFactory.AddProvider(loggerProvider);
+    }
+    
     public T? GetConfigValue<T>(string key)
     {
         return App.Configuration.GetValue<T>(key);
@@ -128,16 +130,7 @@ public class PluginApi : IKekUploadServer
 
     public void SetConfigValue<T>(string key, T value)
     {
-        //TODO: implement proper config saving
-        if(value == null)
-        {
-            throw new ArgumentNullException(nameof(value));
-        }
-
-        var config = App.Services.GetRequiredService<IConfigurationRoot>();
-        config.GetSection(key).Value = value.ToString();
-        // config.Save(); because this method doesn't exist
-        config.Reload();
+        App.Configuration.SetValue(key, value);
     }
 
     public async Task<IReadOnlyList<IUploadedItem>> GetUploads()
@@ -247,24 +240,6 @@ public class PluginApi : IKekUploadServer
                 "Plugin {PluginName} initiated shutdown: {Reason} (Delay: {Delay})", plugin.Info.Name, reason, delay);
             Task.Delay(delay).Wait();
             App.StopAsync().Wait();
-        }).Start();
-    }
-
-    public void Reload(IPlugin plugin, string reason = "Plugin initiated reload", TimeSpan delay = new TimeSpan())
-    {
-        new Thread(() =>
-        {
-            App.Services.GetRequiredService<ILogger<Program>>().LogCritical(
-                "Plugin {PluginName} initiated reload: {Reason} (Delay: {Delay})", plugin.Info.Name, reason, delay);
-            Task.Delay(delay).Wait();
-            foreach (var p in Plugins.Keys)
-            {
-                p.Reload().Wait();
-            }
-            return;
-            //TODO: implement proper reload, because this won't work, for now just the plugins will be reloaded
-            App.StopAsync().Wait();
-            App.StartAsync().Wait();
         }).Start();
     }
 

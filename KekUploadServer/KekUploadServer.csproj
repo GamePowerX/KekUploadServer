@@ -10,7 +10,7 @@
     <ItemGroup>
         <PackageReference Include="CraftingDragon007.MediaToolkit" Version="2.0.1" />
         <PackageReference Include="CraftingDragon007.SharpHash" Version="1.2.0" />
-        <PackageReference Include="GamePowerX.KekUploadServerApi" Version="1.0.0-alpha1" />
+        <PackageReference Include="GamePowerX.KekUploadServerApi" Version="1.0.0-alpha2" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="7.0.9" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="7.0.9">
             <PrivateAssets>all</PrivateAssets>
