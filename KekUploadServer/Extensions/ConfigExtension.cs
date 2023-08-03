@@ -1,32 +1,42 @@
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace KekUploadServer.Extensions;
 
 public static class ConfigExtension
 {
-    public static void SetValue<T>(this IConfiguration config, string key, T value, string configPath = "appsettings.json")
+    public static void SetValue<T>(this IConfiguration config, string key, T value,
+        string configPath = "appsettings.json")
     {
-        if(value == null)
+        // Create a JSON object from the configuration file content
+        JObject? jsonConfig;
+        using (var streamReader = new StreamReader(configPath))
+        using (var jsonReader = new JsonTextReader(streamReader))
         {
-            throw new ArgumentNullException(nameof(value));
+            jsonConfig = JObject.Load(jsonReader);
         }
-        config.GetSection(key).Value = value.ToString();
-        // now make this change permanent
-        configPath = Path.GetFullPath(configPath);
-        var json = File.ReadAllText(configPath);
-        var jObject = JObject.Parse(json);
-        // : is the delimiter for nested keys
-        key = key.Replace(":", ".");
-        var jToken = jObject.SelectToken(key, false);
-        if (jToken != null)
+
+        if (jsonConfig == null) throw new Exception("Failed to parse json!");
+
+        // Split the key by ':' to get the nested path
+        var keys = key.Split(':');
+
+        // Traverse the nested path and create missing objects if necessary
+        var current = jsonConfig;
+        for (var i = 0; i < keys.Length - 1; i++)
         {
-            jToken.Replace(JToken.FromObject(value));
+            if (current![keys[i]] == null || current[keys[i]]!.Type != JTokenType.Object)
+                current[keys[i]] = new JObject();
+            current = (JObject)current[keys[i]]!;
         }
-        else
-        {
-            jObject.Add(key, JToken.FromObject(value));
-        }
-        json = jObject.ToString();
-        File.WriteAllText(configPath, json);
+
+        // Remove the existing key if it exists
+        if (current[keys[^1]] != null) current.Remove(keys[^1]);
+
+        // Set the final value for the last key
+        current[keys[^1]] = JToken.FromObject(value!);
+
+        // Save the modified JSON back to the configuration file
+        File.WriteAllText(configPath, jsonConfig.ToString(Formatting.Indented));
     }
 }
