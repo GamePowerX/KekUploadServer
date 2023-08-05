@@ -15,14 +15,14 @@ public class UploadService : IUploadService
 
     private readonly int _idLength;
     private readonly IMemoryCache _memoryCache;
-    private readonly UploadDataContext _uploadDataContext;
+    private readonly IServiceProvider _serviceProvider;
     private readonly string _uploadDirectory;
 
-    public UploadService(IHttpContextAccessor httpContextAccessor, UploadDataContext uploadDataContext,
+    public UploadService(IHttpContextAccessor httpContextAccessor, IServiceProvider serviceProvider,
         IConfiguration configuration, IMemoryCache memoryCache)
     {
         _httpContextAccessor = httpContextAccessor;
-        _uploadDataContext = uploadDataContext;
+        _serviceProvider = serviceProvider;
         _configuration = configuration;
         _memoryCache = memoryCache;
 
@@ -72,12 +72,14 @@ public class UploadService : IUploadService
 
     public async Task<string> FinishUploadStream(UploadItem uploadItem)
     {
+        await using var scope = _serviceProvider.CreateAsyncScope();
+        var uploadDataContext = scope.ServiceProvider.GetRequiredService<UploadDataContext>();
         uploadItem.Id = Utils.RandomString(_configuration.GetValue("IdLength", 12));
         uploadItem.FileStream.Close();
         await uploadItem.FileStream.DisposeAsync();
         var filePath = Path.Combine(_uploadDirectory, uploadItem.UploadStreamId + ".tmp");
         // check if a file with the same hash already exists
-        var existingItem = await _uploadDataContext.UploadItems.FirstOrDefaultAsync(x => x.Hash == uploadItem.Hash);
+        var existingItem = await uploadDataContext.UploadItems.FirstOrDefaultAsync(x => x.Hash == uploadItem.Hash);
         if (existingItem != null)
         {
             // delete the temporary file
@@ -89,8 +91,8 @@ public class UploadService : IUploadService
 
         var newFilePath = Path.Combine(_uploadDirectory, uploadItem.UploadStreamId + ".upload");
         File.Move(filePath, newFilePath);
-        _uploadDataContext.UploadItems.Add(uploadItem);
-        await _uploadDataContext.SaveChangesAsync();
+        uploadDataContext.UploadItems.Add(uploadItem);
+        await uploadDataContext.SaveChangesAsync();
         await Task.Run(() => _memoryCache.Remove(uploadItem.UploadStreamId));
         PluginLoader.PluginApi.OnUploadStreamFinalized(uploadItem);
         return uploadItem.Id;
@@ -125,7 +127,9 @@ public class UploadService : IUploadService
 
     public async Task<(UploadItem?, string)> GetUploadedItem(string uploadId)
     {
-        var uploadItem = await _uploadDataContext.UploadItems.FindAsync(uploadId);
+        await using var scope = _serviceProvider.CreateAsyncScope();
+        var uploadDataContext = scope.ServiceProvider.GetRequiredService<UploadDataContext>();
+        var uploadItem = await uploadDataContext.UploadItems.FindAsync(uploadId);
         if (uploadItem == null) return (null, "Not found");
         var filePath = Path.GetFullPath(Path.Combine(_uploadDirectory, uploadItem.UploadStreamId + ".upload"));
         return !File.Exists(filePath) ? (null, "Not found") : (uploadItem, filePath);
@@ -138,6 +142,8 @@ public class UploadService : IUploadService
 
     public async Task<IReadOnlyList<UploadItem>> GetUploads()
     {
-        return await _uploadDataContext.UploadItems.ToListAsync();
+        await using var scope = _serviceProvider.CreateAsyncScope();
+        var uploadDataContext = scope.ServiceProvider.GetRequiredService<UploadDataContext>();
+        return await uploadDataContext.UploadItems.ToListAsync();
     }
 }
