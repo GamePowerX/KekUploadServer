@@ -44,7 +44,14 @@ public class UploadService : IUploadService
                 FileAccess.ReadWrite, FileShare.ReadWrite)
         };
         uploadItem.Hasher.Initialize();
-        await Task.Run(() => _memoryCache.Set(streamId, uploadItem, TimeSpan.FromMinutes(5)));
+        var options = new MemoryCacheEntryOptions().SetSlidingExpiration(TimeSpan.FromMinutes(1))
+            .RegisterPostEvictionCallback((key, value, reason, state) =>
+            {
+                if (value is UploadItem item) item.FileStream.Dispose();
+                var path = Path.Combine(_uploadDirectory, key + ".tmp");
+                File.Delete(path);
+            });
+        await Task.Run(() => _memoryCache.Set(streamId, uploadItem, options));
         PluginLoader.PluginApi.OnUploadStreamCreated(uploadItem);
         return streamId;
     }
@@ -75,15 +82,12 @@ public class UploadService : IUploadService
         await using var scope = _serviceProvider.CreateAsyncScope();
         var uploadDataContext = scope.ServiceProvider.GetRequiredService<UploadDataContext>();
         uploadItem.Id = Utils.RandomString(_configuration.GetValue("IdLength", 12));
-        uploadItem.FileStream.Close();
         await uploadItem.FileStream.DisposeAsync();
         var filePath = Path.Combine(_uploadDirectory, uploadItem.UploadStreamId + ".tmp");
         // check if a file with the same hash already exists
         var existingItem = await uploadDataContext.UploadItems.FirstOrDefaultAsync(x => x.Hash == uploadItem.Hash);
         if (existingItem != null)
         {
-            // delete the temporary file
-            File.Delete(filePath);
             // delete the upload item
             await Task.Run(() => _memoryCache.Remove(uploadItem.UploadStreamId));
             return existingItem.Id;

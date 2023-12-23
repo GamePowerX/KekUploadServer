@@ -30,12 +30,12 @@ internal class Program
 
         var app = builder.Build();
         app.UseMiddleware<ExceptionHandlingMiddleware>();
-        
+
         // Load plugins
         var pluginLoader = new PluginLoader();
         var pluginLogger = app.Services.GetRequiredService<ILogger<PluginLoader>>();
         await pluginLoader.LoadPlugins(app, pluginLogger);
-        
+
         // forward logging to plugins
         app.Services.GetRequiredService<ILoggerFactory>().AddProvider(new PluginLoggerProvider());
 
@@ -53,27 +53,26 @@ internal class Program
             app.UseSwaggerUI();
         }
 
-        app.UseHttpsRedirection();
-
-        app.UseAuthorization();
-
         app.MapControllers();
-        
+
         // Start plugins
         await pluginLoader.StartPlugins();
-        
+
         // Register shutdown hook
         var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
         lifetime.ApplicationStopping.Register(() =>
         {
-            try{
+            try
+            {
                 pluginLoader.StopPlugins().Wait();
-            } catch (Exception e)
+            }
+            catch (Exception e)
             {
                 switch (e)
                 {
                     case AggregateException ae:
-                        ae.Handle(innerE => {
+                        ae.Handle(innerE =>
+                        {
                             pluginLogger.LogError(innerE, "Error while stopping plugins");
                             return true;
                         });
