@@ -78,7 +78,7 @@ public class WebService : IWebService
     
     public string GetContentType(string filePath)
     {
-        if (!System.IO.File.Exists(filePath))
+        if (!File.Exists(filePath))
             return "application/octet-stream";
         var mimeTypeEnumerable = MimeTypeMap.List.MimeTypeMap.GetMimeType(Path.GetExtension(filePath));
         if (mimeTypeEnumerable != null)

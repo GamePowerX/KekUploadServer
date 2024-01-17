@@ -3,12 +3,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace KekUploadServer.Database;
 
-public class UploadDataContext : DbContext
+public class UploadDataContext(DbContextOptions<UploadDataContext> options) : DbContext(options)
 {
-    public UploadDataContext(DbContextOptions<UploadDataContext> options) : base(options)
-    {
-    }
-
     public DbSet<UploadItem> UploadItems { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

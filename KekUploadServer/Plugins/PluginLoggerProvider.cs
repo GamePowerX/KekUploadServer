@@ -14,15 +14,9 @@ public class PluginLoggerProvider : ILoggerProvider
     }
 }
 
-public class PluginLogger : ILogger
+public class PluginLogger(string categoryName) : ILogger
 {
-    public PluginLogger(string categoryName)
-    {
-        _categoryName = categoryName;
-    }
-    private string _categoryName;
-
-    public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+    public IDisposable BeginScope<TState>(TState state) where TState : notnull
     {
         var scope = new PluginLoggerScope<TState>(state);
         return scope;
@@ -38,19 +32,13 @@ public class PluginLogger : ILogger
         // format like the console logger
         var formatted = formatter(state, exception);
         var logLevelString = logLevel.ToString().ToUpper();
-        var logString = $"[{DateTime.Now:HH:mm:ss}] [{logLevelString}] [{_categoryName}] {formatted}";
+        var logString = $"[{DateTime.Now:HH:mm:ss}] [{logLevelString}] [{categoryName}] {formatted}";
         PluginLoader.PluginApi.OnConsoleLineWritten(logString);
     }
 }
 
-public class PluginLoggerScope<T> : IDisposable
+public class PluginLoggerScope<T>(object state) : IDisposable
 {
-    public PluginLoggerScope(object state)
-    {
-        _state = state;
-    }
-    private object _state;
-
     public void Dispose()
     {
         GC.SuppressFinalize(this);

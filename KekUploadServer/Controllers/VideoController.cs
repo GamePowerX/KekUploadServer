@@ -4,31 +4,19 @@ using Microsoft.AspNetCore.Mvc;
 namespace KekUploadServer.Controllers;
 
 [ApiController]
-public class VideoController : ControllerBase
+public class VideoController(IConfiguration configuration, IUploadService uploadService, IMediaService mediaService)
+    : ControllerBase
 {
-    private readonly IConfiguration _configuration;
-    private readonly IUploadService _uploadService;
-    private readonly IMediaService _mediaService;
-    
-    private readonly string _thumbnailDirectory;
-    
-    public VideoController(IConfiguration configuration, IUploadService uploadService, IMediaService mediaService)
-    {
-        _configuration = configuration;
-        _uploadService = uploadService;
-        _mediaService = mediaService;
-        
-        _thumbnailDirectory = _configuration.GetValue<string>("ThumbnailDirectory") ?? "thumbs";
-    }
+    private readonly IConfiguration _configuration = configuration;
 
     [HttpGet]
     [Route("t/{uploadId}")]
     public async Task<IActionResult> GetThumbnail(string uploadId)
     {
-        var uploadItem = await _uploadService.GetUploadedItem(uploadId);
+        var uploadItem = await uploadService.GetUploadedItem(uploadId);
         if (uploadItem.Item1 == null)
             return NotFound(ErrorResponse.UploadStreamNotFound);
-        var thumbnail = await _mediaService.GetThumbnail(uploadItem);
+        var thumbnail = await mediaService.GetThumbnail(uploadItem);
         if (thumbnail == null)
             return NotFound(ErrorResponse.FileIsNotVideo);
         return File(thumbnail, "image/jpeg", "thumbnail.jpg");
@@ -38,10 +26,10 @@ public class VideoController : ControllerBase
     [Route("m/{uploadId}")]
     public async Task<IActionResult> GetMetadata(string uploadId)
     {
-        var uploadItem = await _uploadService.GetUploadedItem(uploadId);
+        var uploadItem = await uploadService.GetUploadedItem(uploadId);
         if (uploadItem.Item1 == null)
             return NotFound(ErrorResponse.UploadStreamNotFound);
-        var metadata = await _mediaService.GetMetadata(uploadItem);
+        var metadata = await mediaService.GetMetadata(uploadItem);
         if (metadata == null)
             return NotFound(ErrorResponse.FileIsNotVideo);
         if(metadata.Format == null) return NotFound(ErrorResponse.FileIsNotVideo);

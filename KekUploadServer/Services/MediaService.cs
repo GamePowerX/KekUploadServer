@@ -58,11 +58,13 @@ public class MediaService : IMediaService
 
         var tcs = new TaskCompletionSource<Metadata>();
         var metadataService = new MetadataService(new FFprobeServiceConfiguration());
-        metadataService.OnMetadataProcessedEventHandler += (sender, args) => tcs.TrySetResult(args.Metadata);
+        metadataService.OnMetadataProcessedEventHandler += (_, args) => tcs.TrySetResult(args.Metadata);
         var instruction = new GetMetadataInstructionBuilder
         {
             InputFilePath = path
         };
+        // The library is unfortunately not complying to the nullable standard
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalse
         if (instruction == null) return null;
         await metadataService.ExecuteInstructionAsync(instruction);
         var metadata = await tcs.Task;

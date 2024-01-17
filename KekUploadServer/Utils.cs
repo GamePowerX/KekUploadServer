@@ -2,11 +2,11 @@ namespace KekUploadServer;
 
 public static class Utils
 {
-    public static string RandomString(int i)
+    public static string RandomString(int length)
     {
         const string chars = "abcdefghijklmnopqrstuvwxyz0123456789";
         var random = new Random();
-        return new string(Enumerable.Repeat(chars, i)
+        return new string(Enumerable.Repeat(chars, length)
             .Select(s => s[random.Next(s.Length)]).ToArray());
     }
 

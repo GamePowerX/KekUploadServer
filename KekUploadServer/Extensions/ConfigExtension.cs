@@ -25,7 +25,7 @@ public static class ConfigExtension
         var current = jsonConfig;
         for (var i = 0; i < keys.Length - 1; i++)
         {
-            if (current![keys[i]] == null || current[keys[i]]!.Type != JTokenType.Object)
+            if (current[keys[i]] == null || current[keys[i]]!.Type != JTokenType.Object)
                 current[keys[i]] = new JObject();
             current = (JObject)current[keys[i]]!;
         }
