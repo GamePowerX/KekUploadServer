@@ -30,6 +30,7 @@ internal class Program
 
         var app = builder.Build();
         app.UseMiddleware<ExceptionHandlingMiddleware>();
+        app.UseWebSockets();
 
         // Load plugins
         var pluginLoader = new PluginLoader();
