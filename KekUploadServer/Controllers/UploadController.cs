@@ -1,3 +1,5 @@
+using System.Net.WebSockets;
+using System.Text;
 using KekUploadServer.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -95,6 +97,63 @@ public class UploadController(IConfiguration configuration, IUploadService uploa
         {
             success = true
         });
+    }
+
+    [HttpGet]
+    [Route("ws")]
+    public async Task WebSocket()
+    {
+              
+        if (HttpContext.WebSockets.IsWebSocketRequest)
+        {
+            using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
+            await Echo(webSocket);
+        }
+        else
+        {
+            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+        }  
+    }
+    
+    private async Task Echo(WebSocket webSocket)
+    {
+        var maxChunkSize = _configuration.GetValue("WebSocketBufferSize", 2048);
+        maxChunkSize *= 1024;
+        var buffer = new byte[maxChunkSize];
+        var receiveResult = await webSocket.ReceiveAsync(
+            new ArraySegment<byte>(buffer), CancellationToken.None);
+        await webSocket.SendAsync(new ArraySegment<byte>("[KekUploadServer] Waiting for UploadStreamId"u8.ToArray()), WebSocketMessageType.Text, true, CancellationToken.None);
+        string? uploadStreamId = null;
+        while (!receiveResult.CloseStatus.HasValue)
+        {
+            
+            receiveResult = await webSocket.ReceiveAsync(
+                new ArraySegment<byte>(buffer), CancellationToken.None);
+            switch (receiveResult.MessageType)
+            {
+                case WebSocketMessageType.Text:
+                    var info = Encoding.UTF8.GetString(buffer);
+                    const string uploadStreamIdPrefix = "[KekUploadClient] UploadStreamId: ";
+                    if (info.StartsWith(uploadStreamIdPrefix))
+                    {
+                        uploadStreamId = info.Replace(uploadStreamIdPrefix, "");
+                    }
+                    break;
+                case WebSocketMessageType.Binary:
+                    if (uploadStreamId == null)
+                    {
+                        await webSocket.SendAsync(new ArraySegment<byte>("[KekUploadServer] No UploadStreamId specified, ignoring incoming data!!!"u8.ToArray()), WebSocketMessageType.Text, true, CancellationToken.None);
+                    }
+                    break;
+                case WebSocketMessageType.Close:
+                    break;
+            }
+        }
+
+        await webSocket.CloseAsync(
+            receiveResult.CloseStatus.Value,
+            receiveResult.CloseStatusDescription,
+            CancellationToken.None);
     }
 
     [HttpGet]
