@@ -1,3 +1,5 @@
+using System.Net.WebSockets;
+using System.Text;
 using KekUploadServer.Database;
 using KekUploadServer.Models;
 using KekUploadServer.Plugins;
@@ -113,19 +115,26 @@ public class UploadService : IUploadService
         PluginLoader.PluginApi.OnChunkUploaded(uploadItem, tempStream);
         // copy the temporary stream in a byte array
         var tempBytes = tempStream.ToArray();
+        return await UploadChunk(uploadItem, tempBytes, hash);
+    }
+
+    public async Task<bool> UploadChunk(UploadItem uploadItem, byte[] data, string? hash = null, int offset = 0, int? count = null)
+    {
         if (hash != null)
         {
             // get the hash of the chunk
             var chunkHash = HashFactory.Crypto.CreateSHA1();
-            var res = await Task.Run(() => chunkHash.ComputeBytes(tempBytes));
+            var res = await Task.Run(() => chunkHash.ComputeBytes(data));
             // compare the hash of the chunk to the hash provided by the client
             if (!string.Equals(res.ToString(), hash, StringComparison.CurrentCultureIgnoreCase)) return false;
         }
 
+        count ??= data.Length;
+        
         // write the chunk to the file
-        await tempStream.CopyToAsync(uploadItem.FileStream);
+        await uploadItem.FileStream.WriteAsync(data.AsMemory(offset, count.Value));
         // update the hash
-        await Task.Run(() => uploadItem.Hasher.TransformBytes(tempBytes));
+        await Task.Run(() => uploadItem.Hasher.TransformBytes(data));
         return true;
     }
 
@@ -149,5 +158,71 @@ public class UploadService : IUploadService
         await using var scope = _serviceProvider.CreateAsyncScope();
         var uploadDataContext = scope.ServiceProvider.GetRequiredService<UploadDataContext>();
         return await uploadDataContext.UploadItems.ToListAsync();
+    }
+
+    public async Task HandleWebSocket(WebSocket webSocket)
+    {
+        var maxChunkSize = _configuration.GetValue("WebSocketBufferSize", 2048);
+        maxChunkSize *= 1024;
+        var buffer = new byte[maxChunkSize];
+        var receiveResult = await webSocket.ReceiveAsync(
+            new ArraySegment<byte>(buffer), CancellationToken.None);
+        await webSocket.SendAsync(new ArraySegment<byte>("[KekUploadServer] Waiting for UploadStreamId"u8.ToArray()), WebSocketMessageType.Text, true, CancellationToken.None);
+        UploadItem? uploadItem = null;
+        while (!receiveResult.CloseStatus.HasValue)
+        {
+            
+            receiveResult = await webSocket.ReceiveAsync(
+                new ArraySegment<byte>(buffer), CancellationToken.None);
+            switch (receiveResult.MessageType)
+            {
+                case WebSocketMessageType.Text:
+                    var info = Encoding.UTF8.GetString(buffer);
+                    const string uploadStreamIdPrefix = "[KekUploadClient] UploadStreamId: ";
+                    const string uploadTextDataPrefix = "[KekUploadClient] TextData: ";
+                    if (info.StartsWith(uploadStreamIdPrefix))
+                    {
+                        var uploadStreamId = info.Substring(uploadStreamIdPrefix.Length, 32);
+                        uploadItem = await GetUploadItem(uploadStreamId);
+                        if (uploadItem == null)
+                        {
+                            await webSocket.SendAsync(new ArraySegment<byte>("[KekUploadServer] Invalid UploadStreamId!!!"u8.ToArray()), WebSocketMessageType.Text, true, CancellationToken.None);
+                        }
+                        else
+                        {
+                            await webSocket.SendAsync(new ArraySegment<byte>("[KekUploadServer] Valid UploadStreamId specified. Ready for upload!"u8.ToArray()), WebSocketMessageType.Text, true, CancellationToken.None);
+                        }
+                    }else if (info.StartsWith(uploadTextDataPrefix))
+                    {
+                        if (uploadItem == null)
+                        {
+                            await webSocket.SendAsync(new ArraySegment<byte>("[KekUploadServer] No valid UploadStreamId specified, ignoring incoming data!!!"u8.ToArray()), WebSocketMessageType.Text, true, CancellationToken.None);
+                        }
+                        else
+                        {
+                            var offset = Encoding.UTF8.GetByteCount(uploadTextDataPrefix);
+                            await UploadChunk(uploadItem, buffer, null, offset, receiveResult.Count - offset);
+                        }
+                    }
+                    break;
+                case WebSocketMessageType.Binary:
+                    if (uploadItem == null)
+                    {
+                        await webSocket.SendAsync(new ArraySegment<byte>("[KekUploadServer] No valid UploadStreamId specified, ignoring incoming data!!!"u8.ToArray()), WebSocketMessageType.Text, true, CancellationToken.None);
+                    }
+                    else
+                    {
+                        await UploadChunk(uploadItem, buffer, null, 0, receiveResult.Count);
+                    }
+                    break;
+                case WebSocketMessageType.Close:
+                    break;
+            }
+        }
+
+        await webSocket.CloseAsync(
+            receiveResult.CloseStatus.Value,
+            receiveResult.CloseStatusDescription,
+            CancellationToken.None);
     }
 }
