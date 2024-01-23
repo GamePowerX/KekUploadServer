@@ -162,12 +162,14 @@ public class UploadService : IUploadService
 
     public async Task HandleWebSocket(WebSocket webSocket)
     {
+        const string webSocketClientPrefix = "[KekUploadClient] ";
+        const string webSocketServerPrefix = "[KekUploadServer] ";
         var maxChunkSize = _configuration.GetValue("WebSocketBufferSize", 2048);
         maxChunkSize *= 1024;
         var buffer = new byte[maxChunkSize];
         var receiveResult = await webSocket.ReceiveAsync(
             new ArraySegment<byte>(buffer), CancellationToken.None);
-        await webSocket.SendAsync(new ArraySegment<byte>("[KekUploadServer] Waiting for UploadStreamId"u8.ToArray()), WebSocketMessageType.Text, true, CancellationToken.None);
+        await webSocket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(webSocketServerPrefix + "Waiting for UploadStreamId")), WebSocketMessageType.Text, true, CancellationToken.None);
         UploadItem? uploadItem = null;
         while (!receiveResult.CloseStatus.HasValue)
         {
@@ -178,25 +180,25 @@ public class UploadService : IUploadService
             {
                 case WebSocketMessageType.Text:
                     var info = Encoding.UTF8.GetString(buffer);
-                    const string uploadStreamIdPrefix = "[KekUploadClient] UploadStreamId: ";
-                    const string uploadTextDataPrefix = "[KekUploadClient] TextData: ";
+                    const string uploadStreamIdPrefix = webSocketClientPrefix + "UploadStreamId: ";
+                    const string uploadTextDataPrefix = webSocketClientPrefix + "TextData: ";
                     if (info.StartsWith(uploadStreamIdPrefix))
                     {
                         var uploadStreamId = info.Substring(uploadStreamIdPrefix.Length, 32);
                         uploadItem = await GetUploadItem(uploadStreamId);
                         if (uploadItem == null)
                         {
-                            await webSocket.SendAsync(new ArraySegment<byte>("[KekUploadServer] Invalid UploadStreamId!!!"u8.ToArray()), WebSocketMessageType.Text, true, CancellationToken.None);
+                            await webSocket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(webSocketServerPrefix + "Invalid UploadStreamId!!!")), WebSocketMessageType.Text, true, CancellationToken.None);
                         }
                         else
                         {
-                            await webSocket.SendAsync(new ArraySegment<byte>("[KekUploadServer] Valid UploadStreamId specified. Ready for upload!"u8.ToArray()), WebSocketMessageType.Text, true, CancellationToken.None);
+                            await webSocket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(webSocketServerPrefix + "Valid UploadStreamId specified. Ready for upload!")), WebSocketMessageType.Text, true, CancellationToken.None);
                         }
                     }else if (info.StartsWith(uploadTextDataPrefix))
                     {
                         if (uploadItem == null)
                         {
-                            await webSocket.SendAsync(new ArraySegment<byte>("[KekUploadServer] No valid UploadStreamId specified, ignoring incoming data!!!"u8.ToArray()), WebSocketMessageType.Text, true, CancellationToken.None);
+                            await webSocket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(webSocketServerPrefix + "No valid UploadStreamId specified, ignoring incoming data!!!")), WebSocketMessageType.Text, true, CancellationToken.None);
                         }
                         else
                         {
@@ -208,7 +210,7 @@ public class UploadService : IUploadService
                 case WebSocketMessageType.Binary:
                     if (uploadItem == null)
                     {
-                        await webSocket.SendAsync(new ArraySegment<byte>("[KekUploadServer] No valid UploadStreamId specified, ignoring incoming data!!!"u8.ToArray()), WebSocketMessageType.Text, true, CancellationToken.None);
+                        await webSocket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(webSocketServerPrefix + "No valid UploadStreamId specified, ignoring incoming data!!!")), WebSocketMessageType.Text, true, CancellationToken.None);
                     }
                     else
                     {
