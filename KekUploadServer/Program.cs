@@ -10,6 +10,15 @@ internal class Program
 {
     private static async Task Main(string[] args)
     {
+        Console.WriteLine("░█░█░█▀▀░█░█░█░█░█▀█░█░░░█▀█░█▀█░█▀▄░█▀▀░█▀▀░█▀▄░█░█░█▀▀░█▀▄░░░█▀▀░▄█▄█▄\n" +
+                          "░█▀▄░█▀▀░█▀▄░█░█░█▀▀░█░░░█░█░█▀█░█░█░▀▀█░█▀▀░█▀▄░▀▄▀░█▀▀░█▀▄░░░█░░░▄█▄█▄\n" +
+                          "░▀░▀░▀▀▀░▀░▀░▀▀▀░▀░░░▀▀▀░▀▀▀░▀░▀░▀▀░░▀▀▀░▀▀▀░▀░▀░░▀░░▀▀▀░▀░▀░░░▀▀▀░░▀░▀░");
+        
+        var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+        var fvi = System.Diagnostics.FileVersionInfo.GetVersionInfo(assembly.Location);
+        var version = fvi.FileVersion;
+        Console.WriteLine($"Running KekUploadServer Version {version ?? "unknown"}");
+        
         var builder = WebApplication.CreateBuilder(args);
 
         // Add services to the container.
