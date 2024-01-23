@@ -134,7 +134,7 @@ public class UploadService : IUploadService
         // write the chunk to the file
         await uploadItem.FileStream.WriteAsync(data.AsMemory(offset, count.Value));
         // update the hash
-        await Task.Run(() => uploadItem.Hasher.TransformBytes(data));
+        await Task.Run(() => uploadItem.Hasher.TransformBytes(data, offset, count.Value));
         return true;
     }
 
