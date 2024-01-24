@@ -8,16 +8,15 @@ namespace KekUploadServer;
 
 internal class Program
 {
+    private const string Version = "1.2.0";
+    
     private static async Task Main(string[] args)
     {
         Console.WriteLine("░█░█░█▀▀░█░█░█░█░█▀█░█░░░█▀█░█▀█░█▀▄░█▀▀░█▀▀░█▀▄░█░█░█▀▀░█▀▄░░░█▀▀░▄█▄█▄\n" +
                           "░█▀▄░█▀▀░█▀▄░█░█░█▀▀░█░░░█░█░█▀█░█░█░▀▀█░█▀▀░█▀▄░▀▄▀░█▀▀░█▀▄░░░█░░░▄█▄█▄\n" +
                           "░▀░▀░▀▀▀░▀░▀░▀▀▀░▀░░░▀▀▀░▀▀▀░▀░▀░▀▀░░▀▀▀░▀▀▀░▀░▀░░▀░░▀▀▀░▀░▀░░░▀▀▀░░▀░▀░");
         
-        var assembly = System.Reflection.Assembly.GetExecutingAssembly();
-        var fvi = System.Diagnostics.FileVersionInfo.GetVersionInfo(assembly.Location);
-        var version = fvi.FileVersion;
-        Console.WriteLine($"Running KekUploadServer Version {version ?? "unknown"}");
+        Console.WriteLine($"Running KekUploadServer Version {Version}");
         
         var builder = WebApplication.CreateBuilder(args);
 
