@@ -13,8 +13,8 @@ namespace KekUploadServer.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "UploadStreamId",
                 table: "UploadItems",
-                type: "character varying(32)",
-                maxLength: 32,
+                type: "character varying(64)",
+                maxLength: 64,
                 nullable: false,
                 oldClrType: typeof(string),
                 oldType: "text");
@@ -50,8 +50,8 @@ namespace KekUploadServer.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Id",
                 table: "UploadItems",
-                type: "character varying(32)",
-                maxLength: 32,
+                type: "character varying(64)",
+                maxLength: 64,
                 nullable: false,
                 oldClrType: typeof(string),
                 oldType: "text");
@@ -66,8 +66,8 @@ namespace KekUploadServer.Migrations
                 type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "character varying(32)",
-                oldMaxLength: 32);
+                oldType: "character varying(64)",
+                oldMaxLength: 64);
 
             migrationBuilder.AlterColumn<string>(
                 name: "Name",
@@ -103,8 +103,8 @@ namespace KekUploadServer.Migrations
                 type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "character varying(32)",
-                oldMaxLength: 32);
+                oldType: "character varying(64)",
+                oldMaxLength: 64);
         }
     }
 }

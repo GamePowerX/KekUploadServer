@@ -24,8 +24,8 @@ namespace KekUploadServer.Migrations
             modelBuilder.Entity("KekUploadServer.Models.UploadItem", b =>
                 {
                     b.Property<string>("Id")
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("Extension")
                         .IsRequired()
@@ -43,8 +43,8 @@ namespace KekUploadServer.Migrations
 
                     b.Property<string>("UploadStreamId")
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.HasKey("Id");
 

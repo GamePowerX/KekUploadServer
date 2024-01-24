@@ -7,9 +7,9 @@ namespace KekUploadServer.Models;
 
 public class UploadItem : IUploadItem, IUploadedItem
 {
-    [MaxLength(32)]
+    [MaxLength(64)]
     public string Id { get; set; } = string.Empty;
-    [MaxLength(32)]
+    [MaxLength(64)]
     public string UploadStreamId { get; init; } = string.Empty;
     [MaxLength(10)]
     public string Extension { get; init; } = string.Empty;
