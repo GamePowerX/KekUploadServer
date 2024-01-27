@@ -8,7 +8,7 @@ namespace KekUploadServer;
 
 internal class Program
 {
-    private const string Version = "1.2.0";
+    private const string Version = "1.2.1";
     
     private static async Task Main(string[] args)
     {

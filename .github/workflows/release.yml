@@ -1,0 +1,60 @@
+name: release
+
+on:
+  release:
+    types: [published]
+    
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --no-restore
+      - name: Test
+        run: dotnet test --no-build --verbosity normal
+      - name: Build single file linux-x64
+        run: dotnet publish -c release -r linux-x64 -p:PublishSingleFile=true --self-contained true --verbosity Normal -p:PublishTrimmed=True -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+      - name: Build single file linux-arm64
+        run: dotnet publish -c release -r linux-arm64 -p:PublishSingleFile=true --self-contained true --verbosity Normal -p:PublishTrimmed=True -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+      - name: Build single file macos-x64 (Intel)
+        run: dotnet publish -c release -r osx-x64 -p:PublishSingleFile=true --self-contained true --verbosity Normal -p:PublishTrimmed=True -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+      - name: Build single file macos-arm64 (Apple Silicon)
+        run: dotnet publish -c release -r osx-arm64 -p:PublishSingleFile=true --self-contained true --verbosity Normal -p:PublishTrimmed=True -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+      - name: Build single file windows-x64
+        run: dotnet publish -c release -r win-x64 -p:PublishSingleFile=true --self-contained true --verbosity Normal -p:PublishTrimmed=True -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+      - name: Build single file windows-arm64
+        run: dotnet publish -c release -r win-arm64 -p:PublishSingleFile=true --self-contained true --verbosity Normal -p:PublishTrimmed=True -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+      - name: Move files
+        run: |
+          mv KekUploadServer/bin/Release/net8.0/linux-x64/publish/KekUploadServer KekUploadServer-linux-x64
+          mv KekUploadServer/bin/Release/net8.0/linux-arm64/publish/KekUploadServer KekUploadServer-linux-arm64
+          mv KekUploadServer/bin/Release/net8.0/osx-x64/publish/KekUploadServer KekUploadServer-macos-x64
+          mv KekUploadServer/bin/Release/net8.0/osx-arm64/publish/KekUploadServer KekUploadServer-macos-arm64
+          mv KekUploadServer/bin/Release/net8.0/win-x64/publish/KekUploadServer.exe KekUploadServer-windows-x64.exe
+          mv KekUploadServer/bin/Release/net8.0/win-arm64/publish/KekUploadServer.exe KekUploadServer-windows-arm64.exe
+          cp KekUploadServer/appsettings.default.json appsettings.default.json
+          cp KekUploadServer/Legal.html Legal.html
+          cp KekUploadServer/VideoPlayer.html VideoPlayer.html
+      - name: Upload single file build linux-x64
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            KekUploadServer-linux-x64
+            KekUploadServer-linux-arm64
+            KekUploadServer-macos-x64
+            KekUploadServer-macos-arm64
+            KekUploadServer-windows-x64.exe
+            KekUploadServer-windows-arm64.exe
+            appsettings.default.json
+            Legal.html
+            VideoPlayer.html
