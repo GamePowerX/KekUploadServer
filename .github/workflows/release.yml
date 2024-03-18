@@ -45,7 +45,7 @@ jobs:
           cp KekUploadServer/Legal.html Legal.html
           cp KekUploadServer/VideoPlayer.html VideoPlayer.html
       - name: Upload single file build linux-x64
-        uses: softprops/action-gh-release@4634c16e79c963813287e889244c50009e7f0981
+        uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
