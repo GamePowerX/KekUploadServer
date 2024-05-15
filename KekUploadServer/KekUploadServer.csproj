@@ -13,7 +13,7 @@
         <PackageReference Include="CraftingDragon007.MediaToolkit" Version="2.0.1"/>
         <PackageReference Include="CraftingDragon007.SharpHash" Version="1.2.0"/>
         <PackageReference Include="GamePowerX.KekUploadServerApi" Version="1.0.0-alpha3"/>
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.4"/>
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.5"/>
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.4">        
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
