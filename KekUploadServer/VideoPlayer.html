@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
     <title>%name%</title>
-    <link href='https://vjs.zencdn.net/7.19.2/video-js.css' rel=\"stylesheet\"/>
     <meta charset='UTF-8'>
     <meta content='website' property='og:type'>
     <meta content='summary_large_image' property='twitter:card'>
@@ -22,12 +21,11 @@
        poster='%thumbnail%'
        preload='auto'>
     <source src='/d/%id%' type='video/%extension%'/>
-    <p class='vjs-no-js'>
-        To view this video please enable JavaScript, and consider upgrading to a
-        web browser that <a href='https://videojs.com/html5-video-support/' target='_blank'>supports HTML5 video</a>
+    <p>
+        To view this video please upgrade to a
+        web browser that <a href='https://developer.mozilla.org/en-US/docs/Web/HTML/Element/video#browser_compatibility' target='_blank'>supports HTML5 video</a>
     </p>
 </video>
-<!--script src=https://vjs.zencdn.net/7.19.2/video.min.js></script-->
 <br>
 <a href='%downloadUrl%'>Download this video!</a>
 <p>For legal notices visit <a href='%rootUrl%legal'>this</a> site</p>
@@ -62,5 +60,12 @@
     a {
         color: #007fff;
     }
+    
+    video {
+        max-width: 100%;
+        max-height: 90%;
+        height: auto;
+    }
+    
 </style>
 </html>
