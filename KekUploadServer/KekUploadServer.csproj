@@ -20,7 +20,7 @@
         </PackageReference>
         <PackageReference Include="MimeTypeMap.List" Version="2.1.0"/>
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10"/>
-        <PackageReference Include="Swashbuckle.AspNetCore" Version="7.0.0"/>
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="7.1.0"/>
     </ItemGroup>
 
     <ItemGroup>
