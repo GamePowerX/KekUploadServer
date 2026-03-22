@@ -42,29 +42,29 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: KekUploadServer-linux-x64
-        path: KekUploadServer/bin/Release/net10.0/linux-x64/publish/KekUploadServer
+        path: KekUploadServer/bin/release/net10.0/linux-x64/publish/KekUploadServer
     - name: Upload single file build linux-arm64
       uses: actions/upload-artifact@v4
       with:
         name: KekUploadServer-linux-arm64
-        path: KekUploadServer/bin/Release/net10.0/linux-arm64/publish/KekUploadServer
+        path: KekUploadServer/bin/release/net10.0/linux-arm64/publish/KekUploadServer
     - name: Upload single file build osx-x64
       uses: actions/upload-artifact@v4
       with:
         name: KekUploadServer-macos-x64
-        path: KekUploadServer/bin/Release/net10.0/osx-x64/publish/KekUploadServer
+        path: KekUploadServer/bin/release/net10.0/osx-x64/publish/KekUploadServer
     - name: Upload single file build osx-arm64
       uses: actions/upload-artifact@v4
       with:
         name: KekUploadServer-macos-arm64
-        path: KekUploadServer/bin/Release/net10.0/osx-arm64/publish/KekUploadServer
+        path: KekUploadServer/bin/release/net10.0/osx-arm64/publish/KekUploadServer
     - name: Upload single file build windows-x64
       uses: actions/upload-artifact@v4
       with:
         name: KekUploadServer-windows-x64
-        path: KekUploadServer/bin/Release/net10.0/win-x64/publish/KekUploadServer.exe
+        path: KekUploadServer/bin/release/net10.0/win-x64/publish/KekUploadServer.exe
     - name: Upload single file build windows-arm64
       uses: actions/upload-artifact@v4
       with:
         name: KekUploadServer-windows-arm64
-        path: KekUploadServer/bin/Release/net10.0/win-arm64/publish/KekUploadServer.exe
+        path: KekUploadServer/bin/release/net10.0/win-arm64/publish/KekUploadServer.exe

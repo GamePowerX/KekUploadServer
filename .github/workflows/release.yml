@@ -35,12 +35,12 @@ jobs:
         run: dotnet publish KekUploadServer -c release -r win-arm64 -p:PublishSingleFile=true --self-contained true --verbosity Normal -p:PublishTrimmed=True -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
       - name: Move files
         run: |
-          mv KekUploadServer/bin/Release/net10.0/linux-x64/publish/KekUploadServer KekUploadServer-linux-x64
-          mv KekUploadServer/bin/Release/net10.0/linux-arm64/publish/KekUploadServer KekUploadServer-linux-arm64
-          mv KekUploadServer/bin/Release/net10.0/osx-x64/publish/KekUploadServer KekUploadServer-macos-x64
-          mv KekUploadServer/bin/Release/net10.0/osx-arm64/publish/KekUploadServer KekUploadServer-macos-arm64
-          mv KekUploadServer/bin/Release/net10.0/win-x64/publish/KekUploadServer.exe KekUploadServer-windows-x64.exe
-          mv KekUploadServer/bin/Release/net10.0/win-arm64/publish/KekUploadServer.exe KekUploadServer-windows-arm64.exe
+          mv KekUploadServer/bin/release/net10.0/linux-x64/publish/KekUploadServer KekUploadServer-linux-x64
+          mv KekUploadServer/bin/release/net10.0/linux-arm64/publish/KekUploadServer KekUploadServer-linux-arm64
+          mv KekUploadServer/bin/release/net10.0/osx-x64/publish/KekUploadServer KekUploadServer-macos-x64
+          mv KekUploadServer/bin/release/net10.0/osx-arm64/publish/KekUploadServer KekUploadServer-macos-arm64
+          mv KekUploadServer/bin/release/net10.0/win-x64/publish/KekUploadServer.exe KekUploadServer-windows-x64.exe
+          mv KekUploadServer/bin/release/net10.0/win-arm64/publish/KekUploadServer.exe KekUploadServer-windows-arm64.exe
           cp KekUploadServer/appsettings.default.json appsettings.default.json
           cp KekUploadServer/Legal.html Legal.html
           cp KekUploadServer/VideoPlayer.html VideoPlayer.html
