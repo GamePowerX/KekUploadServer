@@ -14,10 +14,12 @@
         <PackageReference Include="CraftingDragon007.SharpHash" Version="1.2.0"/>
         <PackageReference Include="GamePowerX.KekUploadServerApi" Version="1.0.0-alpha3"/>
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.5" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.5" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5">        
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.5" />
         <PackageReference Include="MimeTypeMap.List" Version="2.1.0"/>
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.1"/>
         <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.5"/>
