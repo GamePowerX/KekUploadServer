@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KekUploadServer", "KekUploadServer\KekUploadServer.csproj", "{AD0EDD87-5CAA-4409-A0A3-E082572AB75D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KekUploadServerTests", "KekUploadServerTests\KekUploadServerTests.csproj", "{59BB21E5-8454-40AE-9F65-2CAD78ADBDC5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +14,9 @@ Global
 		{AD0EDD87-5CAA-4409-A0A3-E082572AB75D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AD0EDD87-5CAA-4409-A0A3-E082572AB75D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AD0EDD87-5CAA-4409-A0A3-E082572AB75D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{59BB21E5-8454-40AE-9F65-2CAD78ADBDC5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{59BB21E5-8454-40AE-9F65-2CAD78ADBDC5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{59BB21E5-8454-40AE-9F65-2CAD78ADBDC5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{59BB21E5-8454-40AE-9F65-2CAD78ADBDC5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

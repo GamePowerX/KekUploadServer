@@ -22,7 +22,10 @@ public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Exception
         var response = context.Response;
         response.ContentType = "application/json";
         response.StatusCode = (int) HttpStatusCode.InternalServerError;
-
-        await response.WriteAsync(ErrorResponse.InternalServerErrorWithException(exception).ToJson());
+#if DEBUG
+        await response.WriteAsync(ErrorResponse.InternalServerErrorWithMessage(exception.ToString()).ToJson());
+#else
+        await response.WriteAsync(ErrorResponse.InternalServerError.ToJson());
+#endif
     }
 }

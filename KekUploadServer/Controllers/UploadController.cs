@@ -11,6 +11,7 @@ public class UploadController(IConfiguration configuration, IUploadService uploa
 {
     private readonly IConfiguration _configuration = configuration;
     private const int MaxExtensionLength = 10;
+    private const int MaxNameLength = 255;
 
     [HttpPost]
     [Route("c/{extension}")]
@@ -31,6 +32,8 @@ public class UploadController(IConfiguration configuration, IUploadService uploa
     {
         if (extension.Length > MaxExtensionLength)
             return BadRequest(ErrorResponse.ExtensionTooLong());
+        if (name.Length > MaxNameLength)
+            return BadRequest(ErrorResponse.NameTooLong(MaxNameLength));
         var uploadStreamId = await uploadService.CreateUploadStream(extension, name);
         return Ok(new
         {
@@ -55,17 +58,17 @@ public class UploadController(IConfiguration configuration, IUploadService uploa
     [Route("f/{streamId}/{hash}")]
     public async Task<IActionResult> FinishUploadStream(string streamId, string hash)
     {
-        var uploadItem = await uploadService.GetUploadItem(streamId);
-        if (uploadItem == null)
+        if (!uploadService.DoesUploadStreamExist(streamId))
             return NotFound(ErrorResponse.UploadStreamNotFound);
-        uploadItem.Hash = await uploadService.FinalizeHash(uploadItem.Hasher);
-        if (uploadItem.Hash != hash)
-            return BadRequest(ErrorResponse.HashMismatch);
-        var uploadId = await uploadService.FinishUploadStream(uploadItem);
-        return Ok(new
-        {
-            id = uploadId
-        });
+        var uploadId = await uploadService.FinalizeUpload(streamId, hash);
+        if (uploadId != null)
+            return Ok(new
+            {
+                id = uploadId
+            });
+        if (!uploadService.DoesUploadStreamExist(streamId))
+            return NotFound(ErrorResponse.UploadStreamNotFound);
+        return BadRequest(ErrorResponse.HashMismatch);
     }
 
     [HttpPost]

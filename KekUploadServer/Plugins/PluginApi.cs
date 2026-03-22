@@ -100,11 +100,7 @@ public class PluginApi : IKekUploadServer
         // check if T is in the same assembly as plugin
         var pluginAssembly = plugin.GetType().Assembly;
         var loggerAssembly = typeof(T).Assembly;
-        if (pluginAssembly == loggerAssembly)
-        {
-            return App.Services.GetRequiredService<ILogger<T>>();
-        }
-        throw new ArgumentException("T is not in the same assembly as plugin!");
+        return pluginAssembly == loggerAssembly ? App.Services.GetRequiredService<ILogger<T>>() : throw new ArgumentException("T is not in the same assembly as plugin!");
     }
 
     public void RegisterLoggerProvider(IPlugin plugin, ILoggerProvider loggerProvider)
@@ -175,17 +171,7 @@ public class PluginApi : IKekUploadServer
 
     public async Task<string?> FinalizeUpload(string streamId, string? hash = null)
     {
-        var uploadItem = await UploadService.GetUploadItem(streamId);
-        if (uploadItem == null)
-        {
-            return null;
-        }
-        uploadItem.Hash = await UploadService.FinalizeHash(uploadItem.Hasher);
-        if (uploadItem.Hash != hash)
-        {
-            return null;
-        }
-        return await UploadService.FinishUploadStream(uploadItem);
+        return await UploadService.FinalizeUpload(streamId, hash);
     }
 
     public bool DoesUploadStreamExist(string streamId)
@@ -249,34 +235,42 @@ public class PluginApi : IKekUploadServer
     
     public event EventHandler<ConsoleLineWrittenEventArgs>? ConsoleLineWritten;
 
+    private void DispatchEvent(Action action, string eventName)
+    {
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception e)
+            {
+                var logger = App.Services.GetRequiredService<ILogger<PluginApi>>();
+                logger.LogError(e, "Plugin event dispatch failed for {EventName}", eventName);
+            }
+        });
+    }
+
     public void OnUploadStreamCreated(UploadItem uploadItem)
     {
-        new Thread(() =>
-        {
-            UploadStreamCreated?.Invoke(this, new UploadStreamCreatedEventArgs(uploadItem));
-        }).Start();
+        DispatchEvent(() => UploadStreamCreated?.Invoke(this, new UploadStreamCreatedEventArgs(uploadItem)),
+            nameof(UploadStreamCreated));
     }
     public void OnChunkUploaded(UploadItem uploadItem, Stream chunk)
     {
-        new Thread(() =>
-        {
-            ChunkUploaded?.Invoke(this, new ChunkUploadedEventArgs(uploadItem, chunk));
-        }).Start();
+        DispatchEvent(() => ChunkUploaded?.Invoke(this, new ChunkUploadedEventArgs(uploadItem, chunk)),
+            nameof(ChunkUploaded));
     }
     public void OnUploadStreamFinalized(UploadItem uploadItem)
     {
-        new Thread(() =>
-        {
-            UploadStreamFinalized?.Invoke(this, new UploadStreamFinalizedEventArgs(uploadItem, uploadItem));
-        }).Start();
+        DispatchEvent(() => UploadStreamFinalized?.Invoke(this, new UploadStreamFinalizedEventArgs(uploadItem, uploadItem)),
+            nameof(UploadStreamFinalized));
     }
     
     public void OnConsoleLineWritten(string line)
     {
-        new Thread(() =>
-        {
-            ConsoleLineWritten?.Invoke(this, new ConsoleLineWrittenEventArgs(line));
-        }).Start();
+        DispatchEvent(() => ConsoleLineWritten?.Invoke(this, new ConsoleLineWrittenEventArgs(line)),
+            nameof(ConsoleLineWritten));
     }
 }
 
