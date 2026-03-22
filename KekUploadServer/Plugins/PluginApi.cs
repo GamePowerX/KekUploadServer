@@ -175,17 +175,7 @@ public class PluginApi : IKekUploadServer
 
     public async Task<string?> FinalizeUpload(string streamId, string? hash = null)
     {
-        var uploadItem = await UploadService.GetUploadItem(streamId);
-        if (uploadItem == null)
-        {
-            return null;
-        }
-        uploadItem.Hash = await UploadService.FinalizeHash(uploadItem.Hasher);
-        if (uploadItem.Hash != hash)
-        {
-            return null;
-        }
-        return await UploadService.FinishUploadStream(uploadItem);
+        return await UploadService.FinalizeUpload(streamId, hash);
     }
 
     public bool DoesUploadStreamExist(string streamId)

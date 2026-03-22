@@ -51,6 +51,11 @@ public class ErrorResponse
         return new ErrorResponse("PARAM_LENGTH", "EXTENSION", $"Extension must be in bounds of 0-{maxLength}");
     }
 
+    public static ErrorResponse NameTooLong(int maxLength = 255)
+    {
+        return new ErrorResponse("PARAM_LENGTH", "NAME", $"Name must be in bounds of 0-{maxLength}");
+    }
+
     public static ErrorResponse InternalServerErrorWithMessage(string message)
     {
         return new ErrorResponse("INTERNAL_SERVER_ERROR", "GENERIC", message);

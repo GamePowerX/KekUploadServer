@@ -1,5 +1,7 @@
 using System.Net.WebSockets;
 using System.Text;
+using System.Collections.Concurrent;
+using System.Buffers;
 using KekUploadServer.Database;
 using KekUploadServer.Models;
 using KekUploadServer.Plugins;
@@ -19,6 +21,7 @@ public class UploadService : IUploadService
     private readonly IMemoryCache _memoryCache;
     private readonly IServiceProvider _serviceProvider;
     private readonly string _uploadDirectory;
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _streamLocks = new();
 
     public UploadService(IHttpContextAccessor httpContextAccessor, IServiceProvider serviceProvider,
         IConfiguration configuration, IMemoryCache memoryCache)
@@ -50,11 +53,14 @@ public class UploadService : IUploadService
             .RegisterPostEvictionCallback((key, value, _, _) =>
             {
                 if (value is UploadItem item) item.FileStream.Dispose();
-                var path = Path.Combine(_uploadDirectory, key + ".tmp");
-                File.Delete(path);
+                var streamKey = key?.ToString();
+                if (streamKey == null) return;
+                _streamLocks.TryRemove(streamKey, out _);
+                var path = Path.Combine(_uploadDirectory, streamKey + ".tmp");
+                if (File.Exists(path)) File.Delete(path);
             });
         await Task.Run(() => _memoryCache.Set(streamId, uploadItem, options));
-        PluginLoader.PluginApi.OnUploadStreamCreated(uploadItem);
+        PluginLoader.PluginApi?.OnUploadStreamCreated(uploadItem);
         return streamId;
     }
 
@@ -79,7 +85,40 @@ public class UploadService : IUploadService
         return result.ToString().ToLower();
     }
 
+    public async Task<string?> FinalizeUpload(string streamId, string? expectedHash = null)
+    {
+        var streamLock = _streamLocks.GetOrAdd(streamId, _ => new SemaphoreSlim(1, 1));
+        await streamLock.WaitAsync();
+        try
+        {
+            var uploadItem = await GetUploadItem(streamId);
+            if (uploadItem == null) return null;
+            uploadItem.Hash = await FinalizeHash(uploadItem.Hasher);
+            if (expectedHash != null && !string.Equals(uploadItem.Hash, expectedHash, StringComparison.OrdinalIgnoreCase))
+                return null;
+            return await FinishUploadStreamCore(uploadItem);
+        }
+        finally
+        {
+            streamLock.Release();
+        }
+    }
+
     public async Task<string> FinishUploadStream(UploadItem uploadItem)
+    {
+        var streamLock = _streamLocks.GetOrAdd(uploadItem.UploadStreamId, _ => new SemaphoreSlim(1, 1));
+        await streamLock.WaitAsync();
+        try
+        {
+            return await FinishUploadStreamCore(uploadItem);
+        }
+        finally
+        {
+            streamLock.Release();
+        }
+    }
+
+    private async Task<string> FinishUploadStreamCore(UploadItem uploadItem)
     {
         await using var scope = _serviceProvider.CreateAsyncScope();
         var uploadDataContext = scope.ServiceProvider.GetRequiredService<UploadDataContext>();
@@ -90,8 +129,8 @@ public class UploadService : IUploadService
         var existingItem = await uploadDataContext.UploadItems.FirstOrDefaultAsync(x => x.Hash == uploadItem.Hash);
         if (existingItem != null)
         {
-            // delete the upload item
-            await Task.Run(() => _memoryCache.Remove(uploadItem.UploadStreamId));
+            if (File.Exists(filePath)) File.Delete(filePath);
+            _memoryCache.Remove(uploadItem.UploadStreamId);
             return existingItem.Id;
         }
 
@@ -99,23 +138,53 @@ public class UploadService : IUploadService
         File.Move(filePath, newFilePath);
         uploadDataContext.UploadItems.Add(uploadItem);
         await uploadDataContext.SaveChangesAsync();
-        await Task.Run(() => _memoryCache.Remove(uploadItem.UploadStreamId));
-        PluginLoader.PluginApi.OnUploadStreamFinalized(uploadItem);
+        _memoryCache.Remove(uploadItem.UploadStreamId);
+        PluginLoader.PluginApi?.OnUploadStreamFinalized(uploadItem);
         return uploadItem.Id;
     }
 
     public async Task<bool> UploadChunk(UploadItem uploadItem, Stream requestBody, string? hash = null)
     {
-        // create a temporary stream to hold the chunk
-        await using var tempStream = new MemoryStream();
-        // copy the chunk to the temporary stream
-        await requestBody.CopyToAsync(tempStream);
-        // reset the position of the temporary stream
-        tempStream.Position = 0;
-        PluginLoader.PluginApi.OnChunkUploaded(uploadItem, tempStream);
-        // copy the temporary stream in a byte array
-        var tempBytes = tempStream.ToArray();
-        return await UploadChunk(uploadItem, tempBytes, hash);
+        if (hash != null)
+        {
+            await using var tempStream = new MemoryStream();
+            await requestBody.CopyToAsync(tempStream);
+            tempStream.Position = 0;
+            var tempBytes = tempStream.ToArray();
+            using var pluginChunk = new MemoryStream(tempBytes, writable: false);
+            PluginLoader.PluginApi?.OnChunkUploaded(uploadItem, pluginChunk);
+            return await UploadChunk(uploadItem, tempBytes, hash);
+        }
+
+        var streamLock = _streamLocks.GetOrAdd(uploadItem.UploadStreamId, _ => new SemaphoreSlim(1, 1));
+        await streamLock.WaitAsync();
+        try
+        {
+            var buffer = ArrayPool<byte>.Shared.Rent(81920);
+            try
+            {
+                int bytesRead;
+                while ((bytesRead = await requestBody.ReadAsync(buffer.AsMemory(0, buffer.Length))) > 0)
+                {
+                    var chunkCopy = new byte[bytesRead];
+                    Buffer.BlockCopy(buffer, 0, chunkCopy, 0, bytesRead);
+                    using var pluginChunk = new MemoryStream(chunkCopy, writable: false);
+                    PluginLoader.PluginApi?.OnChunkUploaded(uploadItem, pluginChunk);
+                    await uploadItem.FileStream.WriteAsync(buffer.AsMemory(0, bytesRead));
+                    await Task.Run(() => uploadItem.Hasher.TransformBytes(buffer, 0, bytesRead));
+                }
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
+
+            return true;
+        }
+        finally
+        {
+            streamLock.Release();
+        }
     }
 
     public async Task<bool> UploadChunk(UploadItem uploadItem, byte[] data, string? hash = null, int offset = 0, int? count = null)
@@ -131,11 +200,20 @@ public class UploadService : IUploadService
 
         count ??= data.Length;
         
-        // write the chunk to the file
-        await uploadItem.FileStream.WriteAsync(data.AsMemory(offset, count.Value));
-        // update the hash
-        await Task.Run(() => uploadItem.Hasher.TransformBytes(data, offset, count.Value));
-        return true;
+        var streamLock = _streamLocks.GetOrAdd(uploadItem.UploadStreamId, _ => new SemaphoreSlim(1, 1));
+        await streamLock.WaitAsync();
+        try
+        {
+            using var pluginChunk = new MemoryStream(data, offset, count.Value, writable: false);
+            PluginLoader.PluginApi?.OnChunkUploaded(uploadItem, pluginChunk);
+            await uploadItem.FileStream.WriteAsync(data.AsMemory(offset, count.Value));
+            await Task.Run(() => uploadItem.Hasher.TransformBytes(data, offset, count.Value));
+            return true;
+        }
+        finally
+        {
+            streamLock.Release();
+        }
     }
 
     public async Task<(UploadItem?, string)> GetUploadedItem(string uploadId)
@@ -164,31 +242,31 @@ public class UploadService : IUploadService
     {
         const string webSocketClientPrefix = "[KekUploadClient] ";
         const string webSocketServerPrefix = "[KekUploadServer] ";
-        var maxChunkSize = _configuration.GetValue("WebSocketBufferSize", 2048);
-        maxChunkSize *= 1024;
-        var buffer = new byte[maxChunkSize];
-        var receiveResult = await webSocket.ReceiveAsync(
-            new ArraySegment<byte>(buffer), CancellationToken.None);
+        var maxChunkSize = _configuration.GetValue("WebSocketBufferSize", 2048) * 1024;
+        var buffer = new byte[Math.Min(maxChunkSize, 81920)];
         await webSocket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(webSocketServerPrefix + "Waiting for UploadStreamId")), WebSocketMessageType.Text, true, CancellationToken.None);
         UploadItem? uploadItem = null;
         string? uploadStreamId = null;
-        while (!receiveResult.CloseStatus.HasValue)
+        while (webSocket.State == WebSocketState.Open)
         {
-            if(webSocket.State != WebSocketState.Open)
-                break;
-            
-            receiveResult = await webSocket.ReceiveAsync(
-                new ArraySegment<byte>(buffer), CancellationToken.None);
-            switch (receiveResult.MessageType)
+            var (messageType, data, closeStatus, closeDescription) =
+                await ReceiveWholeWebSocketMessage(webSocket, buffer, maxChunkSize);
+            if (closeStatus.HasValue)
+            {
+                await webSocket.CloseAsync(closeStatus.Value, closeDescription, CancellationToken.None);
+                return;
+            }
+
+            switch (messageType)
             {
                 case WebSocketMessageType.Text:
-                    var info = Encoding.UTF8.GetString(buffer);
+                    var info = Encoding.UTF8.GetString(data);
                     const string uploadStreamIdPrefix = webSocketClientPrefix + "UploadStreamId: ";
                     const string uploadTextDataPrefix = webSocketClientPrefix + "TextData: ";
                     const string finishUploadStreamPrefix = webSocketClientPrefix + "Finish: ";
                     if (info.StartsWith(uploadStreamIdPrefix))
                     {
-                        uploadStreamId = info.Substring(uploadStreamIdPrefix.Length, 32);
+                        uploadStreamId = info.Substring(uploadStreamIdPrefix.Length).Trim();
                         uploadItem = await GetUploadItem(uploadStreamId);
                         if (uploadItem == null)
                         {
@@ -212,8 +290,8 @@ public class UploadService : IUploadService
                                 await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Expired UploadStream!", default);
                                 return;
                             }
-                            var offset = Encoding.UTF8.GetByteCount(uploadTextDataPrefix);
-                            await UploadChunk(uploadItem, buffer, null, offset, receiveResult.Count - offset);
+                            var payload = data[Encoding.UTF8.GetByteCount(uploadTextDataPrefix)..];
+                            await UploadChunk(uploadItem, payload);
                         }
                     }else if (info.StartsWith(finishUploadStreamPrefix))
                     {
@@ -223,17 +301,14 @@ public class UploadService : IUploadService
                         }
                         else
                         {
-                            var offset = Encoding.UTF8.GetByteCount(finishUploadStreamPrefix);
-                            var hash = Encoding.UTF8.GetString(buffer, offset, receiveResult.Count - offset);
-                            var finalHash = await FinalizeHash(uploadItem.Hasher);
-                            if (hash != finalHash)
+                            var hash = info.Substring(finishUploadStreamPrefix.Length).Trim();
+                            var result = await FinalizeUpload(uploadStreamId, hash);
+                            if (result == null)
                             {
                                 await webSocket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(webSocketServerPrefix + "Invalid Hash!")), WebSocketMessageType.Text, true, CancellationToken.None);
                                 await webSocket.CloseAsync(WebSocketCloseStatus.InvalidPayloadData, "Invalid Hash!", default);
                                 return;
                             }
-                            uploadItem.Hash = finalHash;
-                            var result = await FinishUploadStream(uploadItem);
                             await webSocket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(webSocketServerPrefix + "Id: " + result)), WebSocketMessageType.Text, true, CancellationToken.None);
                             await webSocket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Upload successful!", default);
                             return;
@@ -253,17 +328,31 @@ public class UploadService : IUploadService
                             await webSocket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Expired UploadStream!", default);
                             return;
                         }
-                        await UploadChunk(uploadItem, buffer, null, 0, receiveResult.Count);
+                        await UploadChunk(uploadItem, data);
                     }
                     break;
                 case WebSocketMessageType.Close:
-                    break;
+                    await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by client", CancellationToken.None);
+                    return;
             }
         }
+    }
 
-        await webSocket.CloseAsync(
-            receiveResult.CloseStatus ?? WebSocketCloseStatus.Empty,
-            receiveResult.CloseStatusDescription,
-            CancellationToken.None);
+    private static async Task<(WebSocketMessageType MessageType, byte[] Data, WebSocketCloseStatus? CloseStatus, string? CloseDescription)>
+        ReceiveWholeWebSocketMessage(WebSocket webSocket, byte[] receiveBuffer, int maxMessageSize)
+    {
+        await using var messageBuffer = new MemoryStream();
+        WebSocketReceiveResult receiveResult;
+        do
+        {
+            receiveResult = await webSocket.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
+            if (receiveResult.MessageType == WebSocketMessageType.Close)
+                return (WebSocketMessageType.Close, Array.Empty<byte>(), receiveResult.CloseStatus, receiveResult.CloseStatusDescription);
+            if (messageBuffer.Length + receiveResult.Count > maxMessageSize)
+                return (WebSocketMessageType.Close, Array.Empty<byte>(), WebSocketCloseStatus.MessageTooBig, "Message too large");
+            await messageBuffer.WriteAsync(receiveBuffer.AsMemory(0, receiveResult.Count));
+        } while (!receiveResult.EndOfMessage);
+
+        return (receiveResult.MessageType, messageBuffer.ToArray(), null, null);
     }
 }

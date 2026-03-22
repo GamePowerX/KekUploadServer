@@ -11,6 +11,7 @@ public interface IUploadService
     Task TerminateUploadStream(string streamId);
     Task<UploadItem?> GetUploadItem(string streamId);
     Task<string> FinalizeHash(IHash hash);
+    Task<string?> FinalizeUpload(string streamId, string? expectedHash = null);
     Task<string> FinishUploadStream(UploadItem uploadItem);
     Task<bool> UploadChunk(UploadItem uploadItem, Stream requestBody, string? hash = null);
     Task<bool> UploadChunk(UploadItem uploadItem, byte[] data, string? hash = null, int offset = 0, int? count = null);
