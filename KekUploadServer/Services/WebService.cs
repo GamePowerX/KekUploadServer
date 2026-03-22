@@ -1,4 +1,5 @@
 using System.Text;
+using System.Net;
 using KekUploadServer.Models;
 
 namespace KekUploadServer.Services;
@@ -21,32 +22,40 @@ public class WebService : IWebService
 
     public async Task<string> GetMetaPage(UploadItem uploadItem)
     {
+        var fileName = (uploadItem.Name ?? uploadItem.Hash) + '.' + uploadItem.Extension;
+        var safeFileName = WebUtility.HtmlEncode(fileName);
+        var safeDescription = WebUtility.HtmlEncode(_description);
+        var safeEmbedColor = WebUtility.HtmlEncode(_embedColor);
+        var baseDownloadUrl = _baseUrl + "/d/" + uploadItem.Id;
+        var baseVideoUrl = _baseUrl + "/v/" + uploadItem.Id;
+        var thumbnailUrl = _baseUrl + "/t/" + uploadItem.Id;
+
         var content = new StringBuilder();
         content.Append("<!DOCTYPE html>" +
-                       $"<meta http-equiv=\"refresh\" content=\"0; url='{_baseUrl}/d/{uploadItem.Id}'\" />" +
+                       $"<meta http-equiv=\"refresh\" content=\"0; url='{WebUtility.HtmlEncode(baseDownloadUrl)}'\" />" +
                        "<meta name='robots' content='noindex'>" +
                        "<meta charset='utf-8'>" +
                        "<meta property='og:type' content='website'>" +
                        "<meta property='twitter:card' content='summary_large_image'>" +
-                       $"<meta name='title' content='{uploadItem.Name + '.' + uploadItem.Extension}'>" +
-                       $"<meta property='og:title' content='{uploadItem.Name + '.' + uploadItem.Extension}'>" +
-                       $"<meta name='theme-color' content='{_embedColor}'>");
+                       $"<meta name='title' content='{safeFileName}'>" +
+                       $"<meta property='og:title' content='{safeFileName}'>" +
+                       $"<meta name='theme-color' content='{safeEmbedColor}'>");
         var mimeType = await Utils.GetMimeType(uploadItem.Extension) ?? "";
         if (mimeType.StartsWith("image/"))
-            content.Append($"<meta property='og:image' content='{_baseUrl}/d/{uploadItem.Id}'>" +
-                           $"<meta property='twitter:image' content='{_baseUrl}/d/{uploadItem.Id}'>" +
-                           $"<meta name='description' content='{_description}'>" +
-                           $"<meta property='og:description' content='{_description}'>" +
-                           $"<meta property='twitter:description' content='{_description}'>");
+            content.Append($"<meta property='og:image' content='{WebUtility.HtmlEncode(baseDownloadUrl)}'>" +
+                           $"<meta property='twitter:image' content='{WebUtility.HtmlEncode(baseDownloadUrl)}'>" +
+                           $"<meta name='description' content='{safeDescription}'>" +
+                           $"<meta property='og:description' content='{safeDescription}'>" +
+                           $"<meta property='twitter:description' content='{safeDescription}'>");
         else if (mimeType.StartsWith("video/"))
-            content.Append($"<meta property='og:image' content='{_baseUrl}/t/{uploadItem.Id}'>" +
-                           $"<meta property='twitter:image' content='{_baseUrl}/t/{uploadItem.Id}'>" +
-                           $"<meta property='og:description' content='{_description}\nWatch video at: {_baseUrl + "/v/" + uploadItem.Id}'>" +
-                           $"<meta property='twitter:description' content='{_description}\nWatch video at: {_baseUrl + "/v/" + uploadItem.Id}'>");
+            content.Append($"<meta property='og:image' content='{WebUtility.HtmlEncode(thumbnailUrl)}'>" +
+                           $"<meta property='twitter:image' content='{WebUtility.HtmlEncode(thumbnailUrl)}'>" +
+                           $"<meta property='og:description' content='{safeDescription}\nWatch video at: {WebUtility.HtmlEncode(baseVideoUrl)}'>" +
+                           $"<meta property='twitter:description' content='{safeDescription}\nWatch video at: {WebUtility.HtmlEncode(baseVideoUrl)}'>");
         else
-            content.Append($"<meta name='description' content='{_description}'>" +
-                           $"<meta property='og:description' content='{_description}'>" +
-                           $"<meta property='twitter:description' content='{_description}'>");
+            content.Append($"<meta name='description' content='{safeDescription}'>" +
+                           $"<meta property='og:description' content='{safeDescription}'>" +
+                           $"<meta property='twitter:description' content='{safeDescription}'>");
         return content.ToString();
     }
 

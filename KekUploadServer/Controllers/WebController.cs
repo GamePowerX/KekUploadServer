@@ -9,6 +9,7 @@ public class WebController : Controller
     private readonly IConfiguration _configuration;
     private readonly IUploadService _uploadService;
 
+    private readonly string _webRootAbsolute;
     private readonly string _webRoot;
     private readonly IWebService _webService;
 
@@ -19,33 +20,38 @@ public class WebController : Controller
         _webService = webService;
 
         _webRoot = _configuration.GetValue<string>("WebRoot") ?? "web";
+        _webRootAbsolute = Path.GetFullPath(_webRoot);
     }
 
     [HttpGet("/")]
     public IActionResult Index()
     {
-        var filePath = Path.GetFullPath(Path.Combine(_webRoot, "index.html"));
+        if (!TryGetWebPath(out var filePath, "index.html"))
+            return NotFound();
         return System.IO.File.Exists(filePath) ? PhysicalFile(filePath, "text/html") : NotFound();
     }
 
     [HttpGet("theme.js")]
     public IActionResult Theme()
     {
-        var filePath = Path.GetFullPath(Path.Combine(_webRoot, "theme.js"));
+        if (!TryGetWebPath(out var filePath, "theme.js"))
+            return NotFound();
         return System.IO.File.Exists(filePath) ? PhysicalFile(filePath, "text/javascript") : NotFound();
     }
 
     [HttpGet("themes/{theme}")]
     public IActionResult Themes(string theme)
     {
-        var filePath = Path.GetFullPath(Path.Combine(_webRoot, "themes", theme));
+        if (!TryGetWebPath(out var filePath, "themes", theme))
+            return NotFound();
         return System.IO.File.Exists(filePath) ? PhysicalFile(filePath, "text/css") : NotFound();
     }
 
     [HttpGet("assets/{asset}")]
     public IActionResult Assets(string asset)
     {
-        var filePath = Path.GetFullPath(Path.Combine(_webRoot, "assets", asset));
+        if (!TryGetWebPath(out var filePath, "assets", asset))
+            return NotFound();
         var contentType = _webService.GetContentType(filePath);
         return System.IO.File.Exists(filePath) ? PhysicalFile(filePath, contentType) : NotFound();
     }
@@ -53,7 +59,8 @@ public class WebController : Controller
     [HttpGet("favicon.{ext}")]
     public IActionResult Favicon(string ext)
     {
-        var filePath = Path.GetFullPath(Path.Combine(_webRoot, $"favicon.{ext}"));
+        if (!TryGetWebPath(out var filePath, $"favicon.{ext}"))
+            return NotFound();
         var contentType = _webService.GetContentType(filePath);
         return System.IO.File.Exists(filePath) ? PhysicalFile(filePath, contentType) : NotFound();
     }
@@ -61,7 +68,7 @@ public class WebController : Controller
     
 
     [HttpGet]
-    [Route("{uploadId}")]
+    [Route("{uploadId:regex(^[a-z0-9]{{1,64}}$)}")]
     public async Task<IActionResult> ShowMeta(string uploadId)
     {
         var (uploadItem, _) = await _uploadService.GetUploadedItem(uploadId);
@@ -92,5 +99,14 @@ public class WebController : Controller
         if (legal == null)
             return NotFound(ErrorResponse.LegalSiteNotFound);
         return Content(legal, "text/html");
+    }
+
+    private bool TryGetWebPath(out string filePath, params string[] segments)
+    {
+        var combinedPath = Path.Combine([_webRootAbsolute, ..segments]);
+        filePath = Path.GetFullPath(combinedPath);
+        if (filePath == _webRootAbsolute)
+            return true;
+        return filePath.StartsWith(_webRootAbsolute + Path.DirectorySeparatorChar, StringComparison.Ordinal);
     }
 }

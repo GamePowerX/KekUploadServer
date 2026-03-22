@@ -12,6 +12,8 @@ public class PluginLoader
     {
         var pluginApi = new PluginApi(app);
         var config = app.Configuration;
+        var allowedPlugins = config.GetSection("PluginAllowList").Get<string[]>() ?? [];
+        var allowedPluginSet = new HashSet<string>(allowedPlugins, StringComparer.OrdinalIgnoreCase);
         var pluginDirectory = config.GetValue<string>("PluginDirectory") ?? "plugins";
         var pluginDirectoryPath = Path.GetFullPath(pluginDirectory);
         if (!Directory.Exists(pluginDirectoryPath))
@@ -34,6 +36,12 @@ public class PluginLoader
                     if (plugin == null)
                     {
                         logger?.LogError("Failed to create plugin instance for {PluginType}", pluginType);
+                        continue;
+                    }
+
+                    if (allowedPluginSet.Count > 0 && !allowedPluginSet.Contains(plugin.Info.Name))
+                    {
+                        logger?.LogWarning("Skipping plugin {PluginName} because it is not in PluginAllowList", plugin.Info.Name);
                         continue;
                     }
 

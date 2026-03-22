@@ -73,7 +73,7 @@ internal class Program
         {
             try
             {
-                pluginLoader.StopPlugins().Wait();
+                pluginLoader.StopPlugins().GetAwaiter().GetResult();
             }
             catch (Exception e)
             {

@@ -18,6 +18,7 @@ public class UploadService : IUploadService
     private readonly IHttpContextAccessor _httpContextAccessor;
 
     private readonly int _idLength;
+    private readonly int _uploadStreamSlidingExpirationMinutes;
     private readonly IMemoryCache _memoryCache;
     private readonly IServiceProvider _serviceProvider;
     private readonly string _uploadDirectory;
@@ -32,6 +33,7 @@ public class UploadService : IUploadService
         _memoryCache = memoryCache;
 
         _idLength = _configuration.GetValue("IdLength", 12);
+        _uploadStreamSlidingExpirationMinutes = _configuration.GetValue("UploadStreamSlidingExpirationMinutes", 10);
         _uploadDirectory = _configuration.GetValue<string>("UploadDirectory") ?? "uploads";
         Directory.CreateDirectory(_uploadDirectory);
     }
@@ -49,7 +51,7 @@ public class UploadService : IUploadService
                 FileAccess.ReadWrite, FileShare.ReadWrite)
         };
         uploadItem.Hasher.Initialize();
-        var options = new MemoryCacheEntryOptions().SetSlidingExpiration(TimeSpan.FromMinutes(1))
+        var options = new MemoryCacheEntryOptions().SetSlidingExpiration(TimeSpan.FromMinutes(_uploadStreamSlidingExpirationMinutes))
             .RegisterPostEvictionCallback((key, value, _, _) =>
             {
                 if (value is UploadItem item) item.FileStream.Dispose();
@@ -59,7 +61,7 @@ public class UploadService : IUploadService
                 var path = Path.Combine(_uploadDirectory, streamKey + ".tmp");
                 if (File.Exists(path)) File.Delete(path);
             });
-        await Task.Run(() => _memoryCache.Set(streamId, uploadItem, options));
+        _memoryCache.Set(streamId, uploadItem, options);
         PluginLoader.PluginApi?.OnUploadStreamCreated(uploadItem);
         return streamId;
     }
@@ -310,7 +312,7 @@ public class UploadService : IUploadService
                                 return;
                             }
                             await webSocket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(webSocketServerPrefix + "Id: " + result)), WebSocketMessageType.Text, true, CancellationToken.None);
-                            await webSocket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Upload successful!", default);
+                            await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Upload successful!", default);
                             return;
                         }
                     }

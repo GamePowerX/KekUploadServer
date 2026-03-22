@@ -56,6 +56,21 @@ public class ErrorResponse
         return new ErrorResponse("PARAM_LENGTH", "NAME", $"Name must be in bounds of 0-{maxLength}");
     }
 
+    public static ErrorResponse InvalidRange()
+    {
+        return new ErrorResponse("PARAM", "RANGE", "Offset must be >= 0 and size must be > 0");
+    }
+
+    public static ErrorResponse ChunkSizeTooLarge(long maxLength)
+    {
+        return new ErrorResponse("PARAM_LENGTH", "SIZE", $"Size must be <= {maxLength}");
+    }
+
+    public static ErrorResponse OffsetOutOfBounds()
+    {
+        return new ErrorResponse("PARAM", "OFFSET", "Offset is outside file bounds");
+    }
+
     public static ErrorResponse InternalServerErrorWithMessage(string message)
     {
         return new ErrorResponse("INTERNAL_SERVER_ERROR", "GENERIC", message);

@@ -132,4 +132,59 @@ public class UploadController(IConfiguration configuration, IUploadService uploa
                 ? uploadItem.Name + '.' + uploadItem.Extension
                 : uploadItem.Hash + '.' + uploadItem.Extension);
     }
+
+    [HttpGet]
+    [Route("l/{uploadId}")]
+    public async Task<IActionResult> GetFileLength(string uploadId)
+    {
+        var (uploadItem, path) = await uploadService.GetUploadedItem(uploadId);
+        if (uploadItem == null)
+            return NotFound(ErrorResponse.FileWithIdNotFound);
+
+        var fileInfo = new FileInfo(path);
+        return Ok(new
+        {
+            size = fileInfo.Length
+        });
+    }
+
+    [HttpGet]
+    [Route("d/{uploadId}/{offset:long}/{size:long}")]
+    public async Task<IActionResult> DownloadFileChunk(string uploadId, long offset, long size)
+    {
+        if (offset < 0 || size <= 0)
+            return BadRequest(ErrorResponse.InvalidRange());
+
+        var maxChunkSize = _configuration.GetValue("DownloadChunkMaxBytes", 8 * 1024 * 1024L);
+        if (size > maxChunkSize)
+            return BadRequest(ErrorResponse.ChunkSizeTooLarge(maxChunkSize));
+
+        var (uploadItem, path) = await uploadService.GetUploadedItem(uploadId);
+        if (uploadItem == null)
+            return NotFound(ErrorResponse.FileWithIdNotFound);
+
+        var fileInfo = new FileInfo(path);
+        if (offset >= fileInfo.Length)
+            return BadRequest(ErrorResponse.OffsetOutOfBounds());
+
+        var bytesToRead = (int)Math.Min(size, fileInfo.Length - offset);
+        var buffer = new byte[bytesToRead];
+
+        await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        stream.Position = offset;
+        var read = 0;
+        while (read < bytesToRead)
+        {
+            var currentRead = await stream.ReadAsync(buffer.AsMemory(read, bytesToRead - read));
+            if (currentRead == 0)
+                break;
+            read += currentRead;
+        }
+
+        if (read != bytesToRead)
+            Array.Resize(ref buffer, read);
+
+        var mimeType = await uploadService.GetMimeType(uploadItem.Extension);
+        return File(buffer, mimeType ?? "application/octet-stream");
+    }
 }
