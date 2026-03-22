@@ -164,8 +164,7 @@ public class UploadService : IUploadService
     {
         const string webSocketClientPrefix = "[KekUploadClient] ";
         const string webSocketServerPrefix = "[KekUploadServer] ";
-        var maxChunkSize = _configuration.GetValue("WebSocketBufferSize", 2048);
-        maxChunkSize *= 1024;
+        var maxChunkSize = _configuration.GetValue("WebSocketBufferSize", 2048) * 1024;
         var buffer = new byte[maxChunkSize];
         var receiveResult = await webSocket.ReceiveAsync(
             new ArraySegment<byte>(buffer), CancellationToken.None);

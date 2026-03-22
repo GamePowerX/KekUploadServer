@@ -22,19 +22,27 @@ public class PluginLoader
         var pluginList = new List<IPlugin>();
         foreach (var pluginFile in pluginFiles)
         {
-            var pluginAssembly = Assembly.LoadFrom(pluginFile);
-            var pluginTypes = pluginAssembly.GetTypes();
-            foreach (var pluginType in pluginTypes)
+            try
             {
-                if (pluginType is not { IsClass: true, IsAbstract: false } ||
-                    !pluginType.IsAssignableTo(typeof(IPlugin))) continue;
-                var plugin = (IPlugin?) Activator.CreateInstance(pluginType);
-                if (plugin == null)
+                var pluginAssembly = Assembly.LoadFrom(pluginFile);
+                var pluginTypes = pluginAssembly.GetTypes();
+                foreach (var pluginType in pluginTypes)
                 {
-                    logger?.LogError("Failed to create plugin instance for {PluginType}", pluginType);
-                    continue;
+                    if (pluginType is not { IsClass: true, IsAbstract: false } ||
+                        !pluginType.IsAssignableTo(typeof(IPlugin))) continue;
+                    var plugin = (IPlugin?)Activator.CreateInstance(pluginType);
+                    if (plugin == null)
+                    {
+                        logger?.LogError("Failed to create plugin instance for {PluginType}", pluginType);
+                        continue;
+                    }
+
+                    pluginList.Add(plugin);
                 }
-                pluginList.Add(plugin);
+            }
+            catch (Exception e)
+            {
+                logger?.LogWarning(e, "Failed to load plugin {PluginFile}", pluginFile);
             }
         }
         var pluginLoadOrder = new List<string>();
