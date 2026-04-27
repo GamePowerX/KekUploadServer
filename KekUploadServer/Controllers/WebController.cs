@@ -68,7 +68,7 @@ public class WebController : Controller
     
 
     [HttpGet]
-    [Route("{uploadId:regex(^[a-z0-9]{{1,64}}$)}")]
+    [Route("{uploadId:regex(^[[a-z0-9]]{{1,64}}$)}")]
     public async Task<IActionResult> ShowMeta(string uploadId)
     {
         var (uploadItem, _) = await _uploadService.GetUploadedItem(uploadId);
