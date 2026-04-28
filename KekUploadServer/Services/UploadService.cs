@@ -269,13 +269,33 @@ public class UploadService : IUploadService
         const string webSocketServerPrefix = "[KekUploadServer] ";
         var maxChunkSize = _configuration.GetValue("WebSocketBufferSize", 2048) * 1024;
         var buffer = new byte[Math.Min(maxChunkSize, 81920)];
-        await webSocket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(webSocketServerPrefix + "Waiting for UploadStreamId")), WebSocketMessageType.Text, true, CancellationToken.None);
+        try
+        {
+            await webSocket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(webSocketServerPrefix + "Waiting for UploadStreamId")), WebSocketMessageType.Text, true, CancellationToken.None);
+        }
+        catch (WebSocketException)
+        {
+            return;
+        }
+
         UploadItem? uploadItem = null;
         string? uploadStreamId = null;
         while (webSocket.State == WebSocketState.Open)
         {
-            var (messageType, data, closeStatus, closeDescription) =
-                await ReceiveWholeWebSocketMessage(webSocket, buffer, maxChunkSize);
+            WebSocketMessageType messageType;
+            byte[] data;
+            WebSocketCloseStatus? closeStatus;
+            string? closeDescription;
+            try
+            {
+                (messageType, data, closeStatus, closeDescription) =
+                    await ReceiveWholeWebSocketMessage(webSocket, buffer, maxChunkSize);
+            }
+            catch (WebSocketException)
+            {
+                return;
+            }
+
             if (closeStatus.HasValue)
             {
                 await webSocket.CloseAsync(closeStatus.Value, closeDescription, CancellationToken.None);

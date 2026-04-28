@@ -20,6 +20,8 @@ public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Exception
     private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
         var response = context.Response;
+        if (response.HasStarted) return;
+
         response.ContentType = "application/json";
         response.StatusCode = (int) HttpStatusCode.InternalServerError;
 #if DEBUG
