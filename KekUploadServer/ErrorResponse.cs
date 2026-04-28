@@ -4,6 +4,9 @@ using System.Text.Json.Serialization;
 
 namespace KekUploadServer;
 
+/// <summary>
+/// Standard JSON error payload returned by API endpoints.
+/// </summary>
 public class ErrorResponse
 {
     private ErrorResponse(string generic, string field, string error)
@@ -13,10 +16,19 @@ public class ErrorResponse
         Error = error;
     }
 
+    /// <summary>
+    /// Stable machine-readable error category.
+    /// </summary>
     [JsonPropertyName("generic")] public string Generic { get; set; }
 
+    /// <summary>
+    /// Field or subsystem associated with the error.
+    /// </summary>
     [JsonPropertyName("field")] public string Field { get; set; }
 
+    /// <summary>
+    /// Human-readable error message.
+    /// </summary>
     [JsonPropertyName("error")] public string Error { get; set; }
 
     // User errors
@@ -30,6 +42,9 @@ public class ErrorResponse
     public static ErrorResponse VideoSiteNotFound => new("INTERNAL_SERVER_ERROR", "VIDEO_PAGE", "Video page missing");
     public static ErrorResponse LegalSiteNotFound => new("INTERNAL_SERVER_ERROR", "LEGAL_PAGE", "Legal page missing");
 
+    /// <summary>
+    /// Serializes the response to its API JSON representation.
+    /// </summary>
     public string ToJson()
     {
         return JsonSerializer.Serialize(this);
