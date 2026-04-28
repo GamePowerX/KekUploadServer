@@ -39,6 +39,14 @@ public class WebController : Controller
         return System.IO.File.Exists(filePath) ? PhysicalFile(filePath, "text/javascript") : NotFound();
     }
 
+    [HttpGet("404.css")]
+    public IActionResult NotFoundStyles()
+    {
+        if (!TryGetWebPath(out var filePath, "404.css"))
+            return NotFound();
+        return System.IO.File.Exists(filePath) ? PhysicalFile(filePath, "text/css") : NotFound();
+    }
+
     [HttpGet("themes/{theme}")]
     public IActionResult Themes(string theme)
     {
