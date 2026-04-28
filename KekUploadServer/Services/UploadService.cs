@@ -124,16 +124,27 @@ public class UploadService : IUploadService
     {
         await using var scope = _serviceProvider.CreateAsyncScope();
         var uploadDataContext = scope.ServiceProvider.GetRequiredService<UploadDataContext>();
-        uploadItem.Id = Utils.RandomString(_configuration.GetValue("IdLength", _idLength));
+        uploadItem.Id = await CreateUniqueUploadId(uploadDataContext);
         await uploadItem.FileStream.DisposeAsync();
         var filePath = Path.Combine(_uploadDirectory, uploadItem.UploadStreamId + ".tmp");
-        // check if a file with the same hash already exists
         var existingItem = await uploadDataContext.UploadItems.FirstOrDefaultAsync(x => x.Hash == uploadItem.Hash);
         if (existingItem != null)
         {
+            var virtualUploadItem = new UploadItem
+            {
+                Id = uploadItem.Id,
+                UploadStreamId = existingItem.UploadStreamId,
+                Extension = uploadItem.Extension,
+                Name = uploadItem.Name,
+                Hash = uploadItem.Hash
+            };
+
             if (File.Exists(filePath)) File.Delete(filePath);
+            uploadDataContext.UploadItems.Add(virtualUploadItem);
+            await uploadDataContext.SaveChangesAsync();
             _memoryCache.Remove(uploadItem.UploadStreamId);
-            return existingItem.Id;
+            PluginLoader.PluginApi?.OnUploadStreamFinalized(virtualUploadItem);
+            return virtualUploadItem.Id;
         }
 
         var newFilePath = Path.Combine(_uploadDirectory, uploadItem.UploadStreamId + ".upload");
@@ -143,6 +154,18 @@ public class UploadService : IUploadService
         _memoryCache.Remove(uploadItem.UploadStreamId);
         PluginLoader.PluginApi?.OnUploadStreamFinalized(uploadItem);
         return uploadItem.Id;
+    }
+
+    private async Task<string> CreateUniqueUploadId(UploadDataContext uploadDataContext)
+    {
+        var idLength = _configuration.GetValue("IdLength", _idLength);
+        string id;
+        do
+        {
+            id = Utils.RandomString(idLength);
+        } while (await uploadDataContext.UploadItems.AnyAsync(x => x.Id == id));
+
+        return id;
     }
 
     public async Task<bool> UploadChunk(UploadItem uploadItem, Stream requestBody, string? hash = null)
