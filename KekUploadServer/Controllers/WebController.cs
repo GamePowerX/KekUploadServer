@@ -73,7 +73,7 @@ public class WebController : Controller
     {
         var (uploadItem, _) = await _uploadService.GetUploadedItem(uploadId);
         if (uploadItem == null)
-            return NotFound(ErrorResponse.FileWithIdNotFound);
+            return await NotFoundPageOrJson();
         var content = await _webService.GetMetaPage(uploadItem);
         return Content(content, "text/html");
     }
@@ -84,7 +84,7 @@ public class WebController : Controller
     {
         var (uploadItem, _) = await _uploadService.GetUploadedItem(uploadId);
         if (uploadItem == null)
-            return NotFound(ErrorResponse.FileWithIdNotFound);
+            return await NotFoundPageOrJson();
         var content = await _webService.GetVideoSite(uploadItem);
         if (content == null)
             return NotFound(ErrorResponse.VideoSiteNotFound);
@@ -108,5 +108,19 @@ public class WebController : Controller
         if (filePath == _webRootAbsolute)
             return true;
         return filePath.StartsWith(_webRootAbsolute + Path.DirectorySeparatorChar, StringComparison.Ordinal);
+    }
+
+    private async Task<IActionResult> NotFoundPageOrJson()
+    {
+        if (!TryGetWebPath(out var filePath, "404.html") || !System.IO.File.Exists(filePath))
+            return NotFound(ErrorResponse.FileWithIdNotFound);
+
+        var content = await System.IO.File.ReadAllTextAsync(filePath);
+        return new ContentResult
+        {
+            Content = content,
+            ContentType = "text/html",
+            StatusCode = StatusCodes.Status404NotFound
+        };
     }
 }
