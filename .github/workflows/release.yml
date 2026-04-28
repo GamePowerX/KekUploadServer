@@ -3,6 +3,10 @@ name: release
 on:
   release:
     types: [published]
+
+permissions:
+  contents: write
+  packages: write
     
 
 jobs:
@@ -11,6 +15,23 @@ jobs:
     
     steps:
       - uses: actions/checkout@v6
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set Docker image tags
+        id: docker_tags
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "version=${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "version_without_v=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "image=${image}" >> "$GITHUB_OUTPUT"
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
@@ -45,7 +66,7 @@ jobs:
           cp KekUploadServer/Legal.html Legal.html
           cp KekUploadServer/VideoPlayer.html VideoPlayer.html
       - name: Upload single file build linux-x64
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
@@ -58,3 +79,13 @@ jobs:
             appsettings.default.json
             Legal.html
             VideoPlayer.html
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./KekUploadServer/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.docker_tags.outputs.image }}:${{ steps.docker_tags.outputs.version }}
+            ${{ steps.docker_tags.outputs.image }}:${{ steps.docker_tags.outputs.version_without_v }}
+            ${{ steps.docker_tags.outputs.image }}:latest
