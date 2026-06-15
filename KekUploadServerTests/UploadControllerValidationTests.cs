@@ -48,10 +48,64 @@ public class UploadControllerValidationTests
         Assert.That(error.Field, Is.EqualTo("HASH"));
     }
 
+    [Test]
+    public async Task DownloadFile_ForUploadedItem_EnablesRangeProcessing()
+    {
+        var configuration = new ConfigurationBuilder().Build();
+        var service = new FakeUploadService
+        {
+            UploadedItem = new UploadItem
+            {
+                Id = "upload-id",
+                UploadStreamId = "stream",
+                Extension = "mp4",
+                Name = "video",
+                Hash = "hash"
+            },
+            UploadedItemPath = "/tmp/video.upload"
+        };
+        var controller = new UploadController(configuration, service);
+
+        var result = await controller.DownloadFile("upload-id");
+
+        var fileResult = result as PhysicalFileResult;
+        Assert.That(fileResult, Is.Not.Null);
+        Assert.That(fileResult!.EnableRangeProcessing, Is.True);
+        Assert.That(fileResult.FileDownloadName, Is.EqualTo("video.mp4"));
+    }
+
+    [Test]
+    public async Task StreamFile_ForUploadedItem_EnablesRangeProcessingWithoutDownloadName()
+    {
+        var configuration = new ConfigurationBuilder().Build();
+        var service = new FakeUploadService
+        {
+            UploadedItem = new UploadItem
+            {
+                Id = "upload-id",
+                UploadStreamId = "stream",
+                Extension = "mp4",
+                Name = "video",
+                Hash = "hash"
+            },
+            UploadedItemPath = "/tmp/video.upload"
+        };
+        var controller = new UploadController(configuration, service);
+
+        var result = await controller.StreamFile("upload-id");
+
+        var fileResult = result as PhysicalFileResult;
+        Assert.That(fileResult, Is.Not.Null);
+        Assert.That(fileResult!.EnableRangeProcessing, Is.True);
+        Assert.That(fileResult.FileDownloadName, Is.Empty);
+    }
+
     private sealed class FakeUploadService : IUploadService
     {
         public bool StreamExists { get; set; }
         public string? FinalizeUploadResult { get; set; } = "upload-id";
+        public UploadItem? UploadedItem { get; set; }
+        public string UploadedItemPath { get; set; } = string.Empty;
 
         public Task<string> CreateUploadStream(string extension, string? name = null) => Task.FromResult("stream");
         public bool DoesUploadStreamExist(string streamId) => StreamExists;
@@ -62,10 +116,9 @@ public class UploadControllerValidationTests
         public Task<string> FinishUploadStream(UploadItem uploadItem) => Task.FromResult("upload-id");
         public Task<bool> UploadChunk(UploadItem uploadItem, Stream requestBody, string? hash = null) => Task.FromResult(true);
         public Task<bool> UploadChunk(UploadItem uploadItem, byte[] data, string? hash = null, int offset = 0, int? count = null) => Task.FromResult(true);
-        public Task<(UploadItem?, string)> GetUploadedItem(string uploadId) => Task.FromResult<(UploadItem?, string)>((null, string.Empty));
+        public Task<(UploadItem?, string)> GetUploadedItem(string uploadId) => Task.FromResult((UploadedItem, UploadedItemPath));
         public Task<string?> GetMimeType(string extension) => Task.FromResult<string?>("application/octet-stream");
         public Task<IReadOnlyList<UploadItem>> GetUploads() => Task.FromResult<IReadOnlyList<UploadItem>>(Array.Empty<UploadItem>());
         public Task HandleWebSocket(WebSocket webSocket) => Task.CompletedTask;
     }
 }
-

@@ -130,7 +130,19 @@ public class UploadController(IConfiguration configuration, IUploadService uploa
         return PhysicalFile(path, mimeType ?? "application/octet-stream",
             uploadItem.Name != null
                 ? uploadItem.Name + '.' + uploadItem.Extension
-                : uploadItem.Hash + '.' + uploadItem.Extension);
+                : uploadItem.Hash + '.' + uploadItem.Extension,
+            enableRangeProcessing: true);
+    }
+
+    [HttpGet]
+    [Route("s/{uploadId}")]
+    public async Task<IActionResult> StreamFile(string uploadId)
+    {
+        var (uploadItem, path) = await uploadService.GetUploadedItem(uploadId);
+        if (uploadItem == null)
+            return NotFound(ErrorResponse.FileWithIdNotFound);
+        var mimeType = await uploadService.GetMimeType(uploadItem.Extension);
+        return PhysicalFile(path, mimeType ?? "application/octet-stream", enableRangeProcessing: true);
     }
 
     [HttpGet]
